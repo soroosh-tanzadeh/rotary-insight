@@ -1,0 +1,8 @@
+data
+checkpoints
+*.pyc
+*.pyo
+logs
+mlruns
+mlartifacts
+.env
