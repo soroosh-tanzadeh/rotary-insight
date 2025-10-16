@@ -30,15 +30,25 @@ def validate_model(
 
         y_pred_probs = torch.cat(y_pred_probs)
         y_pred = y_pred_probs.argmax(axis=1).numpy()
-        y_true = torch.cat(y_true).numpy()
+        y_true = torch.cat(y_true).cpu().numpy()
 
         report = classification_report(
-            y_true, y_pred, target_names=labels, output_dict=True
+            y_true,
+            y_pred,
+            target_names=labels,
+            output_dict=True,
+            labels=range(len(labels)),
         )
 
         y_pred_probs = F.softmax(y_pred_probs, dim=1).numpy()
 
-        auroc = roc_auc_score(y_true, y_pred_probs, multi_class="ovr", average=None)
+        auroc = roc_auc_score(
+            y_true,
+            y_pred_probs,
+            multi_class="ovr",
+            average=None,
+            labels=range(len(labels)),
+        )
 
         metrics = {
             "classification_report": report,

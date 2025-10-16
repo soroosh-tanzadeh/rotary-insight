@@ -9,9 +9,6 @@ from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 import torch
 
-# 12DriveEndFault and 48DriveEndFault are same, difference is in sample rate
-exps_idx = {"12DriveEndFault": 0, "48DriveEndFault": 0, "12FanEndFault": 0}
-
 # https://engineering.case.edu/bearingdatacenter/apparatus-and-procedures
 faults_idx = {
     "Normal": 0,
@@ -32,27 +29,7 @@ faults_idx = {
     "0.021-OuterRace12": 9,
 }
 
-
 FOLDER = "cwru-dataset"
-
-
-def get_class_name(label):
-    if label == 0:
-        return "Normal"
-    for fault in faults_idx:
-        if fault == 0:
-            continue
-        for exp in exps_idx:
-            if label == exps_idx[exp] + faults_idx[fault]:
-                ## if fault name end with a number like OuterRace12, we need to remove the number
-                return (
-                    exp
-                    + "_"
-                    + fault.replace("OuterRace3", "OuterRace")
-                    .replace("OuterRace6", "OuterRace")
-                    .replace("OuterRace12", "OuterRace")
-                )
-    return "Unknown"
 
 
 def filter_key(keys):
@@ -67,35 +44,43 @@ def filter_key(keys):
 def get_class(exp, fault):
     if fault == "Normal":
         return 0
-    return exps_idx[exp] + faults_idx[fault]
+    return faults_idx[fault]
 
 
-class CWRU(BearingDataset):
+class CrwuDataset(BearingDataset):
     def __init__(
         self,
-        rdir,
-        exps=["12DriveEndFault", "48DriveEndFault", "12FanEndFault"],
+        rdir="data/CWRU/",
         rpms=["1797", "1772", "1750", "1730"],
+        fault_location="DriveEnd",
         window_size=2048,
-        seed=None,
     ):
         super().__init__()
-        self.seed = seed
-        for exp in exps:
-            if exp not in ("12DriveEndFault", "12FanEndFault", "48DriveEndFault"):
-                print("wrong experiment name: {}".format(exp))
-                return
+        self.rdir = rdir
+        self.rpms = rpms
+        self.fault_location = fault_location
+        self.window_size = window_size
+
+        if fault_location not in ["DriveEnd", "FanEnd"]:
+            raise ValueError("Fault location must be either DriveEnd or FanEnd")
+
         for rpm in rpms:
-            if rpm not in ("1797", "1772", "1750", "1730"):
-                print("wrong rpm value: {}".format(rpm))
-                return
+            if rpm not in ["1797", "1772", "1750", "1730"]:
+                raise ValueError("RPM must be one of 1797, 1772, 1750, 1730")
+
+        if fault_location == "DriveEnd":
+            self.signal_key = "DE"
+            self.set = "12DriveEndFault"
+        else:
+            self.signal_key = "FE"
+            self.set = "12FanEndFault"
 
         fmeta = os.path.join(os.path.dirname("__file__"), "metadata.txt")
         all_lines = open(fmeta).readlines()
         infos = []
         for line in all_lines:
             l = line.split()
-            if (l[0] in exps or l[0] == "NormalBaseline") and l[1] in rpms:
+            if (l[0] == self.set or l[0] == "NormalBaseline") and l[1] in rpms:
                 if (
                     "Normal" in l[2]
                     or "0.007" in l[2]
@@ -105,18 +90,10 @@ class CWRU(BearingDataset):
                     if faults_idx.get(l[2], -1) != -1:
                         infos.append(l)
 
-        self.window_size = window_size  # sequence length
-        self.rdir = rdir
         infos = sorted(infos, key=lambda line: get_class(line[0], line[2]))
 
         self._load_data(rdir, infos)
-        # shuffle training and test arrays
         self._shuffle()
-        self.all_labels = tuple(
-            ((line[0] + line[2]), get_class(line[0], line[2])) for line in infos
-        )
-        self.classes = sorted(list(set(self.all_labels)), key=lambda label: label[1])
-        self.num_classes = len(self.classes)  # number of classes
 
     def window_size(self):
         self.window_size
@@ -147,10 +124,10 @@ class CWRU(BearingDataset):
         if self._load_preprocessed():
             return
 
-        X = np.zeros((0, self.window_size, 2))
+        X = np.zeros((0, self.window_size, 1))
         y = []
 
-        for idx, info in enumerate(infos):
+        for info in infos:
             # Directory of this file
             fdir = os.path.join(rdir, info[0], info[1])
             self._mkdir(fdir)
@@ -160,15 +137,19 @@ class CWRU(BearingDataset):
                 self._download(fpath, info[3].rstrip("\n"), 10)
 
             mat_dict = loadmat(fpath)
-            key1, key2 = filter_key(mat_dict.keys())
-            time_series = np.hstack((mat_dict[key1], mat_dict[key2]))
+            driveEndKey, fanEndKey = filter_key(mat_dict.keys())
+            time_series = None
+            if self.signal_key == "DE":
+                time_series = mat_dict[driveEndKey]
+            else:
+                time_series = mat_dict[fanEndKey]
 
             n_samples = (
                 len(time_series) - (len(time_series) % self.window_size)
             ) / self.window_size
 
             # Process training data
-            clips = np.zeros((0, 2))
+            clips = np.zeros((0, 1))
             for cut in shuffle(list(range(int(n_samples)))):
                 clips = np.vstack(
                     (
@@ -178,11 +159,11 @@ class CWRU(BearingDataset):
                         ],
                     )
                 )
-            clips = clips.reshape(-1, self.window_size, 2)
+            clips = clips.reshape(-1, self.window_size, 1)
             X = np.vstack((X, clips))
             y.extend([get_class(info[0], info[2]) for _ in range(len(clips))])
 
-        X = X.reshape(-1, 2, self.window_size)
+        X = X.reshape(-1, 1, self.window_size)
 
         self.X = X
         self.y = np.array(y)
@@ -205,8 +186,8 @@ class CWRU(BearingDataset):
 
     def presist(self):
         self.ensure_dir(os.path.join(self.rdir, FOLDER))
-        np.save(os.path.join(self.rdir, "test", "X.npy"), self.X)
-        np.save(os.path.join(self.rdir, "test", "y.npy"), self.y)
+        np.save(os.path.join(self.rdir, FOLDER, "X.npy"), self.X)
+        np.save(os.path.join(self.rdir, FOLDER, "y.npy"), self.y)
 
     def _shuffle(self):
         indices = np.arange(len(self.X))
@@ -229,7 +210,7 @@ class CWRU(BearingDataset):
     def targets(self):
         return self.y
 
-    def classes(self):
+    def labels(self):
         return [
             "Normal",
             "0.007-Ball",

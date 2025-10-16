@@ -24,7 +24,7 @@ class TransformerEncoderBlock(nn.Module):
         )
         self.feedforward = nn.Sequential(
             nn.Linear(embedding_dim, feedforward_dim),
-            nn.GELU(),
+            nn.LeakyReLU(),
             nn.Linear(feedforward_dim, embedding_dim),
         )
 
