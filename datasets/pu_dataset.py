@@ -71,13 +71,11 @@ class PU_DatasetProcessor:
         rdir,
         window_size=2048,
         step_size=2048,
-        train_size=0.8,
         artificial_damage=True,
         rotational_speeds=rotational_speeds,
         load_torques=load_torques,
         radial_forces_newton=radial_forces_newton,
         force_reload=False,
-        resplit_train_test=False,
         seed=None,
     ):
         """
@@ -93,23 +91,18 @@ class PU_DatasetProcessor:
             load_torques: Dictionary of load torques to include
             radial_forces_newton: Dictionary of radial forces to include
             force_reload: If True, reprocess all data even if processed files exist
-            resplit_train_test: If True, reprocess train/test split
             seed: Random seed for reproducibility
         """
         self.rdir = rdir
         self.seed = seed
         self.window_size = window_size
         self.step_size = step_size
-        self.train_size = train_size
         self.artificial_damage = artificial_damage
         self.rotational_speeds = rotational_speeds
         self.load_torques = load_torques
         self.radial_forces_newton = radial_forces_newton
         self.force_reload = force_reload
-        self.resplit_train_test = resplit_train_test
         self.data = None
-        self.data_train = None
-        self.data_test = None
 
         self.files_information = {
             "files": {"Healthy": [], "InnerRace": [], "OuterRace": []}
@@ -125,12 +118,8 @@ class PU_DatasetProcessor:
         """
         # Check if processed data already exists and force_reload is False
         if not self.force_reload and self._load_existing_processed_data():
-            if self.resplit_train_test:
-                print("Resplitting train/test...")
-                self._train_test_split()
-            else:
-                print("Loaded existing processed data.")
-                return
+            print("Loaded existing processed data.")
+            return
 
         print("Processing dataset files...")
 
@@ -148,9 +137,6 @@ class PU_DatasetProcessor:
         # Load and process data
         self._process_and_save_data()
 
-        # Split into train/test
-        self._train_test_split()
-
         # Save files information
         self._save_files_info()
 
@@ -163,16 +149,11 @@ class PU_DatasetProcessor:
         Returns:
             bool: True if data was successfully loaded, False otherwise
         """
-        train_csv_path = os.path.join(self.rdir, "data_train.csv")
-        test_csv_path = os.path.join(self.rdir, "data_test.csv")
+        csv_path = os.path.join(self.rdir, "data.csv")
 
-        if os.path.exists(train_csv_path) and os.path.exists(test_csv_path):
+        if os.path.exists(csv_path):
             try:
-                self.data_train = pd.read_csv(train_csv_path)
-                self.data_test = pd.read_csv(test_csv_path)
-                self.data = pd.concat(
-                    [self.data_train, self.data_test], ignore_index=True
-                )
+                self.data = pd.read_csv(csv_path)
                 return True
             except Exception as e:
                 print(f"Error loading existing data: {e}")
@@ -221,6 +202,7 @@ class PU_DatasetProcessor:
         self.data = pd.DataFrame(
             {"file_name": file_names, "window_counts": window_counts, "label": labels}
         )
+        self.data.to_csv(os.path.join(self.rdir, "data.csv"), index=False)
 
     def _should_process_file(self, file):
         """
@@ -294,25 +276,6 @@ class PU_DatasetProcessor:
             del mat_data, data, windowed_data
 
         return processed_file_path, number_of_windows
-
-    def _train_test_split(self):
-        """Split data into training and testing sets."""
-        if self.data is None or len(self.data) == 0:
-            raise ValueError("No data available for train/test split")
-
-        self.data_train, self.data_test = train_test_split(
-            self.data,
-            test_size=1 - self.train_size,
-            random_state=self.seed,
-            stratify=self.data["label"],
-        )
-
-        # Save split data
-        self.data_train.to_csv(os.path.join(self.rdir, "data_train.csv"), index=False)
-        self.data_test.to_csv(os.path.join(self.rdir, "data_test.csv"), index=False)
-
-        print(f"Train set: {len(self.data_train)} samples")
-        print(f"Test set: {len(self.data_test)} samples")
 
     def _save_files_info(self):
         """Save files information to JSON file."""
@@ -565,7 +528,7 @@ class PU_Dataset(BearingDataset):
     def targets(self):
         return self.y
 
-    def classes(self):
+    def labels(self):
         return [
             "Healthy",
             "InnerRace",
@@ -582,18 +545,12 @@ if __name__ == "__main__":
     print(
         f"Memory usage: {data_processor.data.memory_usage().sum() / 1024 / 1024:.2f} MB"
     )
-
-    train_dataset = PU_Dataset(
-        "./data/dataset/PU/processed/data_train",
-        data_processor.data_train,
-        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-    )
-    test_dataset = PU_Dataset(
-        "./data/dataset/PU/processed/data_test",
-        data_processor.data_test,
+    dataset = PU_Dataset(
+        "./data/dataset/PU/processed/data",
+        data_processor.data,
         device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     )
 
     # memory usage
-    print(f"Memory usage: {train_dataset.X.nbytes / 1024 / 1024:.2f} MB")
-    print(f"Memory usage: {test_dataset.X.nbytes / 1024 / 1024:.2f} MB")
+    print(f"Memory usage: {dataset.X.nbytes / 1024 / 1024:.2f} MB")
+    print(f"Memory usage: {dataset.X.nbytes / 1024 / 1024:.2f} MB")
