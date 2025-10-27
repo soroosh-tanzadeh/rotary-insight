@@ -93,6 +93,7 @@ def train_validate_model(
     experiment: Experiment,
     trial_number: int,
     labels,
+    window_size: int,
 ):
     experiment_name = experiment.name
     run_name = f"{experiment_name}__{model_name}__{trial_number}"
@@ -176,7 +177,7 @@ def train_validate_model(
         mlflow.pytorch.log_model(
             model.cpu(),
             name=f"{model_name}_model",
-            input_example=np.random.randn(32, 1, 2048).astype(np.float32),
+            input_example=np.random.randn(32, 1, window_size).astype(np.float32),
         )
 
         # Log model metrics as a JSON artifact
@@ -308,6 +309,7 @@ def run_train_validation(experiment: Experiment, debug: bool = False):
             device=device,
             hyperparameters=cfg.get("hyperparameters", {}),  # Pass hyperparameters
             labels=experiment.get_dataset().labels(),
+            window_size=window_size,
         )
         split_results.append(result_split)
 

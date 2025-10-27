@@ -174,18 +174,20 @@ class CrwuDataset(BearingDataset):
 
     def _load_preprocessed(self):
         if not os.path.exists(
-            os.path.join(self.rdir, FOLDER, "X.npy")
-        ) or not os.path.exists(os.path.join(self.rdir, FOLDER, "y.npy")):
+            os.path.join(self.rdir, FOLDER, f"X_{self.seq_len}.npy")
+        ) or not os.path.exists(
+            os.path.join(self.rdir, FOLDER, f"y_{self.seq_len}.npy")
+        ):
             return False
         print("Loading preprocessed data...")
-        self.X = np.load(os.path.join(self.rdir, FOLDER, "X.npy"))
-        self.y = np.load(os.path.join(self.rdir, FOLDER, "y.npy"))
+        self.X = np.load(os.path.join(self.rdir, FOLDER, f"X_{self.seq_len}.npy"))
+        self.y = np.load(os.path.join(self.rdir, FOLDER, f"y_{self.seq_len}.npy"))
         return True
 
     def presist(self):
         self.ensure_dir(os.path.join(self.rdir, FOLDER))
-        np.save(os.path.join(self.rdir, FOLDER, "X.npy"), self.X)
-        np.save(os.path.join(self.rdir, FOLDER, "y.npy"), self.y)
+        np.save(os.path.join(self.rdir, FOLDER, f"X_{self.seq_len}.npy"), self.X)
+        np.save(os.path.join(self.rdir, FOLDER, f"y_{self.seq_len}.npy"), self.y)
 
     def shuffle(self):
         indices = np.arange(len(self.X))
