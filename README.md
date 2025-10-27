@@ -13,7 +13,8 @@ This project implements various neural network architectures for detecting beari
 - **Multiple Datasets**: Support for CWRU and PU bearing fault datasets
 - **Data Augmentation**: Noise injection for robust model training
 - **Cross-Validation**: K-fold cross-validation support
-- **Model Inference API**: Easy-to-use API for loading and using trained models
+- **REST API Server**: FastAPI-based inference server with authentication and auto-documentation
+- **Docker Support**: Easy deployment with Docker and docker-compose
 
 ## Installation
 
@@ -58,29 +59,52 @@ mlflow ui
 
 Then open your browser to http://localhost:5000
 
-### Using the Inference API
+### Using the REST API Server
 
-```python
-from api import ModelInference
-import numpy as np
+The project includes a production-ready FastAPI server for model inference.
 
-# Load the best model from an experiment
-inference = ModelInference(experiment_name="my_experiment")
+**Quick Start:**
 
-# Perform inference
-data = np.random.randn(1, 1, 2048)  # (batch_size, channels, signal_length)
-predictions = inference.predict(data)
-probabilities = inference.predict_proba(data)
+```bash
+# 1. Create .env file with API keys
+echo "API_KEYS=your-secret-key" > .env
+
+# 2. Copy model configuration
+cp model_serve_config.example.json model_serve_config.json
+
+# 3. Start MLflow
+./start_mlflow.bash
+
+# 4. Start API server
+./start_server.bash
 ```
+
+**Access the API:**
+
+- Interactive docs: http://localhost:8000/docs
+- API endpoint: http://localhost:8000/predict
+
+**See full documentation:**
+
+- [API Quick Start](API_QUICKSTART.md)
+- [Environment Setup](ENV_SETUP.md)
+- [Server Documentation](server/README.md)
+- [Docker Deployment](DOCKER_DEPLOYMENT.md)
 
 ## Project Structure
 
 ```
 rotary-insight/
-├── api.py                 # Inference API for loading and using models
 ├── train.py              # Main training script
+├── api.py                # Legacy inference utilities
 ├── experiment_configs.py # Experiment configuration builder
 ├── model_configs.py      # Model architecture configurations
+├── server/               # FastAPI inference server
+│   ├── main.py          # API application
+│   ├── auth.py          # Authentication
+│   ├── models.py        # Pydantic models
+│   ├── inference.py     # Model loading & inference
+│   └── client_example.py # Example Python client
 ├── datasets/             # Dataset loaders
 │   ├── cwru_dataset.py
 │   └── pu_dataset.py
@@ -92,8 +116,9 @@ rotary-insight/
 │   ├── train.py         # Training loop
 │   ├── validate.py      # Validation functions
 │   ├── callbacks.py     # Training callbacks
-│   ├── display.py       # Visualization utilities
-│   └── results.py       # Results logging (legacy)
+│   └── display.py       # Visualization utilities
+├── Dockerfile.api        # Docker image for API
+├── docker-compose.yml    # Docker compose configuration
 └── checkpoints/          # Model checkpoints (local backup)
 ```
 

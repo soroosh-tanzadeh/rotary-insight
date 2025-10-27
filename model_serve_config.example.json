@@ -1,0 +1,25 @@
+{
+    "models": {
+        "transformer_encoder_cwru_2048": {
+            "path": "models:/transformer_encoder_cwru_2048/1",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "transformer_encoder_cwru_1024": {
+            "path": "models:/transformer_encoder_cwru_1024/1",
+            "type": "pytorch",
+            "window_size": 1024,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "transformer_encoder_cwru_512": {
+            "path": "models:/transformer_encoder_cwru_512/1",
+            "type": "pytorch",
+            "window_size": 512,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        }
+    }
+}
