@@ -65,7 +65,7 @@ radial_forces_newton = {
 }
 
 
-class PU_DatasetProcessor:
+class PUDataset:
     def __init__(
         self,
         rdir,
@@ -77,6 +77,8 @@ class PU_DatasetProcessor:
         radial_forces_newton=radial_forces_newton,
         force_reload=False,
         seed=None,
+        verbose=False,
+        device="cpu",
     ):
         """
         Initialize PU Dataset
@@ -102,26 +104,39 @@ class PU_DatasetProcessor:
         self.load_torques = load_torques
         self.radial_forces_newton = radial_forces_newton
         self.force_reload = force_reload
+        self.verbose = verbose
         self.data = None
+        self.device = device
 
         self.files_information = {
             "files": {"Healthy": [], "InnerRace": [], "OuterRace": []}
         }
 
         self.url_list = []
-        self.process_files()
+        self._process_files()
+        self.total_windows = self.data["window_counts"].sum()
+        self._load_data()
+        self._log(
+            f"Dataset processing complete. {self.data.memory_usage().sum() / 1024 / 1024:.2f} MB"
+        )
+        self._log(f"Dataset loaded into memory. {self.X.nbytes / 1024 / 1024:.2f} MB")
+        self._log(f"Dataset labels: {self.labels()}")
 
-    def process_files(self):
+    def _log(self, message):
+        if self.verbose:
+            print(message)
+
+    def _process_files(self):
         """
         Main method to process dataset files.
         Downloads, processes, and splits data into train/test sets.
         """
         # Check if processed data already exists and force_reload is False
         if not self.force_reload and self._load_existing_processed_data():
-            print("Loaded existing processed data.")
+            self._log("Loaded existing processed data.")
             return
 
-        print("Processing dataset files...")
+        self._log("Processing dataset files...")
 
         # Download if not exists
         self._download()
@@ -140,7 +155,79 @@ class PU_DatasetProcessor:
         # Save files information
         self._save_files_info()
 
-        print("Dataset processing complete.")
+    def _presist_data(self):
+        """
+        Presist data to disk.
+        """
+        self.data.to_csv(os.path.join(self.rdir, "data.csv"), index=False)
+        np.save(os.path.join(self.rdir, "X.npy"), self.X.cpu().numpy())
+        np.save(os.path.join(self.rdir, "y.npy"), self.y.cpu().numpy())
+        self._log(
+            f"Data presisted to disk. {self.data.memory_usage().sum() / 1024 / 1024:.2f} MB"
+        )
+
+    def _load_data_from_disk(self):
+        """
+        Load data from disk.
+        """
+
+        if (
+            not os.path.exists(os.path.join(self.rdir, "data.csv"))
+            or not os.path.exists(os.path.join(self.rdir, "X.npy"))
+            or not os.path.exists(os.path.join(self.rdir, "y.npy"))
+        ):
+            return False
+
+        self.data = pd.read_csv(os.path.join(self.rdir, "data.csv"))
+        self.X = torch.from_numpy(np.load(os.path.join(self.rdir, "X.npy"))).to(
+            self.device
+        )
+        self.y = torch.from_numpy(np.load(os.path.join(self.rdir, "y.npy"))).to(
+            self.device
+        )
+        return True
+
+    def _load_data(self):
+        """
+        Load preprocessed data into memory, as two sets, X and y.
+
+        Returns:
+            tuple: (X, y)
+        """
+        if self._load_data_from_disk():
+            return self.X, self.y
+
+        file_names = self.data["file_name"].tolist()
+        labels = self.data["label"].tolist()
+        counts = self.data["window_counts"].tolist()
+
+        ## determine dtype from the first file to preallocate correctly
+        sample = np.load(file_names[0], mmap_mode="r")
+        del sample
+
+        self.X = torch.empty(
+            (self.total_windows, self.window_size, 1), dtype=torch.float64
+        ).to(self.device)
+        self.y = torch.empty((self.total_windows,), dtype=torch.int64).to(self.device)
+
+        offsets = np.cumsum([0] + counts[:-1])
+
+        def load_and_place(i: int):
+            arr = np.load(file_names[i])
+            if arr.ndim == 2:
+                arr = np.expand_dims(arr, axis=-1)
+            start = offsets[i]
+            end = start + arr.shape[0]
+            self.X[start:end, :, :] = torch.from_numpy(arr).to(self.device)
+            self.y[start:end] = torch.tensor(labels[i]).to(self.device)
+
+        max_workers = min(32, (os.cpu_count() or 4) * 2)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            list(executor.map(load_and_place, range(len(file_names))))
+
+        self.X = self.X.permute(0, 2, 1)
+
+        self._presist_data()
 
     def _load_existing_processed_data(self):
         """
@@ -324,7 +411,7 @@ class PU_DatasetProcessor:
 
             # Download if archive doesn't exist
             if not os.path.exists(archive_path):
-                print(f"Downloading {name}...")
+                self._log(f"Downloading {name}...")
                 urllib.urlretrieve(url, archive_path)
                 print("Download complete.")
 
@@ -338,7 +425,7 @@ class PU_DatasetProcessor:
 
     def _get_files_info(self):
         """Scan directories and create files information structure."""
-        print("Scanning files and creating information structure...")
+        self._log("Scanning files and creating information structure...")
 
         # Reset files information
         self.files_information = {
@@ -396,6 +483,7 @@ class PU_DatasetProcessor:
 
                         except ValueError as e:
                             print(f"Warning: Could not parse filename {file}: {e}")
+                            raise e
 
         # Convert sets to sorted lists
         self.files_information["metadata"] = {
@@ -406,9 +494,33 @@ class PU_DatasetProcessor:
             "reps": sorted(list(metadata["reps"])),
         }
 
-        print(
+        self._log(
             f"Found {sum(len(files) for files in self.files_information['files'].values())} files"
         )
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return self.X[idx].float(), self.y[idx].long()
+
+    def inputs(self):
+        return self.X
+
+    def targets(self):
+        return self.y
+
+    def labels(self):
+        return ["Healthy", "InnerRace", "OuterRace"]
+
+    def window_size(self):
+        return self.window_size
+
+    def __repr__(self):
+        return f"PU_Dataset(X={self.X.shape}, y={self.y.shape}, window_size={self.window_size})"
+
+    def __str__(self):
+        return f"PU_Dataset(X={self.X.shape}, y={self.y.shape}, window_size={self.window_size})"
 
 
 def slicer(array, win, step, return_df=True):
@@ -519,6 +631,22 @@ class PU_Dataset(BearingDataset):
     def __getitem__(self, idx):
         return self.X[idx].float(), self.y[idx].long()
 
+    def stack(self, X: torch.Tensor, y: torch.Tensor):
+        self.X = np.vstack((self.X, X))
+        self.y = np.hstack((self.y, y))
+
+    def set_inputs(self, X: torch.Tensor):
+        self.X = X
+
+    def set_targets(self, y: torch.Tensor):
+        self.y = y
+
+    def shuffle(self):
+        indices = np.arange(len(self.X))
+        np.random.shuffle(indices)
+        self.X = self.X[indices]
+        self.y = np.array(tuple(self.y[i] for i in indices))
+
     def window_size(self):
         return self.window_size
 
@@ -537,20 +665,9 @@ class PU_Dataset(BearingDataset):
 
 
 if __name__ == "__main__":
-    data_processor = PU_DatasetProcessor(
-        rdir="./data/dataset/PU", seed=42, force_reload=False
-    )
+    data_processor = PUDataset(rdir="./data/dataset/PU", seed=42, force_reload=False)
 
-    # memory usage
+    print(data_processor)
     print(
         f"Memory usage: {data_processor.data.memory_usage().sum() / 1024 / 1024:.2f} MB"
     )
-    dataset = PU_Dataset(
-        "./data/dataset/PU/processed/data",
-        data_processor.data,
-        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-    )
-
-    # memory usage
-    print(f"Memory usage: {dataset.X.nbytes / 1024 / 1024:.2f} MB")
-    print(f"Memory usage: {dataset.X.nbytes / 1024 / 1024:.2f} MB")

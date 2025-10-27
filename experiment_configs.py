@@ -1,8 +1,7 @@
 import torch
-from sklearn.model_selection import train_test_split
-from datasets.dataset import BearingDataset, SimpleBearingDataset
+from datasets.dataset import BearingDataset
 from datasets.cwru_dataset import CrwuDataset
-from datasets.pu_dataset import PU_Dataset, PU_DatasetProcessor
+from datasets.pu_dataset import PUDataset
 
 
 class Experiment:
@@ -10,8 +9,7 @@ class Experiment:
         self,
         name: str,
         model: str,
-        train_dataset: BearingDataset,
-        test_dataset: BearingDataset,
+        dataset: BearingDataset,
         test_with_noise: bool = False,
         train_with_noise: bool = False,
         train_augmentation: bool = False,
@@ -30,73 +28,36 @@ class Experiment:
         self.train_with_noise = train_with_noise
         self.train_augmentation = train_augmentation
         self.method = method
-        self.train_dataset = train_dataset
-        self.test_dataset = test_dataset
+        self.dataset = dataset
         self.noise_level = noise_level
         self.trials = trials
 
-    def get_train_dataset(self) -> BearingDataset:
-        return self.train_dataset
-
-    def get_test_dataset(self) -> BearingDataset:
-        return self.test_dataset
+    def get_dataset(self) -> BearingDataset:
+        return self.dataset
 
 
-def dataset(
-    name, experiment_name, window_size=2048, device=None
-) -> tuple[BearingDataset, BearingDataset]:
+def dataset(name, experiment_name, window_size=2048, device=None) -> BearingDataset:
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     if name == "CWRU":
-        dataset = CrwuDataset(
+        ds = CrwuDataset(
             rdir="./data/dataset/CWRU/",
             fault_location="DriveEnd",
-            window_size=window_size,
+            seq_len=window_size,
             rpms=["1797", "1772", "1750", "1730"],
         )
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            dataset.X,
-            dataset.y,
-            test_size=0.2,
-            shuffle=True,
-        )
-
-        return (
-            SimpleBearingDataset(X_train, y_train, dataset.labels(), window_size),
-            SimpleBearingDataset(X_test, y_test, dataset.labels(), window_size),
-        )
+        return ds
 
     elif name == "PU":
-        processor = PU_DatasetProcessor(
+        ds = PUDataset(
             rdir="./data/dataset/PU/",
             window_size=window_size,
             step_size=window_size,
         )
 
-        train, test = train_test_split(
-            processor.data,
-            test_size=0.2,
-            shuffle=True,
-        )
-
-        return (
-            PU_Dataset(
-                file_path=f"./data/dataset/PU/processed/data_{experiment_name}_train",
-                data_raw=train,
-                window_size=window_size,
-                step_size=window_size,
-                device=device,
-            ),
-            PU_Dataset(
-                file_path=f"./data/dataset/PU/processed/data_{experiment_name}_test",
-                data_raw=test,
-                window_size=window_size,
-                step_size=window_size,
-                device=device,
-            ),
-        )
+        return ds
     else:
         raise ValueError(f"Dataset {name} not supported")
 
@@ -145,7 +106,7 @@ def create_experiments(
     for noise_level in noise_levels:
         for model_name in models:
 
-            train_dataset, test_dataset = dataset(
+            ds = dataset(
                 name=dataset_name,
                 experiment_name=name,
                 window_size=window_size,
@@ -161,8 +122,7 @@ def create_experiments(
                 method=method,
                 noise_level=noise_level,
                 trials=trials,
-                train_dataset=train_dataset,
-                test_dataset=test_dataset,
+                dataset=ds,
             )
             experiments.append(experiment_config)
 

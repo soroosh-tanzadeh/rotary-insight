@@ -9,15 +9,18 @@ from utils.display import (
     display_history,
     display_confusion_matrix_by_pred,
 )
-from utils.preprocessing import scale_data, add_noise_data
+from torch.utils.data import random_split
+from preprocessings import AddNoise, StandardScaler, TrainAugmentation
 from utils.validate import validate_model
 from utils.train import train, ensure_dir
 from utils.results import count_parameters
 from model_configs import get_model_config
 from utils.callbacks import ModelCheckpoint
 from experiment_configs import create_experiments, Experiment
+import dotenv
 import mlflow
 import mlflow.pytorch
+from datasets.dataset import SimpleBearingDataset
 
 DEBUG = False
 
@@ -81,17 +84,20 @@ def train_validate_model(
     model,
     train_loader,
     test_loader,
-    name,
+    model_name,
     optimizer,
     callbacks,
     epochs,
     device,
     hyperparameters,
-    experiment_name,
+    experiment: Experiment,
+    trial_number: int,
     labels,
 ):
+    experiment_name = experiment.name
+    run_name = f"{experiment_name}__{model_name}__{trial_number}"
     timestamp = time.strftime("%Y-%m-%d_%H_%M_%S")
-    checkpoint_path = f"checkpoints/{experiment_name}/{name}.pt"
+    checkpoint_path = f"checkpoints/{experiment_name}/{model_name}.pt"
 
     # Create temporary directory for images (will be logged to MLFlow)
     import tempfile
@@ -107,101 +113,92 @@ def train_validate_model(
     callbacks.append(checkpoint_cb)
 
     # Set MLFlow experiment and start run
-    mlflow.set_experiment(experiment_name)
-    mlflow.start_run(run_name=f"{name}_{timestamp}")
+    s3_url = os.getenv("MLFLOW_S3_ENDPOINT_URL")
+    print(f"MLFlow S3 endpoint URL: {s3_url}")
+    mlflow_experiment = mlflow.get_experiment_by_name(experiment_name)
+    if mlflow_experiment is None:
+        mlflow_experiment = mlflow.create_experiment(
+            name=experiment_name,
+            # artifact_location=s3_url,
+        )
+        mlflow_experiment = mlflow.set_experiment(experiment_id=mlflow_experiment)
+    print(f"Running run")
 
-    # Log tags
-    mlflow.set_tag("model_name", name)
-    mlflow.set_tag("timestamp", timestamp)
+    with mlflow.start_run(
+        run_name=run_name, experiment_id=mlflow_experiment.experiment_id
+    ) as run:
+        print(f"Running run: {run.info.run_id}")
+        print(f"Running experiment: {mlflow_experiment.experiment_id}")
+        ## Train the model
+        history = train(
+            model=model,
+            epochs=epochs,
+            dataloader_train=train_loader,
+            dataloader_val=test_loader,
+            optimizer=optimizer,
+            callbacks=callbacks,
+            criterion=torch.nn.CrossEntropyLoss(),
+            device=device,
+        )
+        _save_and_visualize_history(history, model_name, images_path, history_path)
 
-    ## Validate Raw model
-    model.eval()
-    with torch.no_grad():
         y_pred, y_true, validation_loss, metrics = validate_model(
             model,
             test_loader,
-            None,
+            checkpoint_path,
             device,
             labels,
         )
-        print(f"Raw model validation loss: {validation_loss}")
-        print(f"Raw model validation metrics: {metrics}")
 
-    ## Train the model
-    history = train(
-        model=model,
-        epochs=epochs,
-        dataloader_train=train_loader,
-        dataloader_val=test_loader,
-        optimizer=optimizer,
-        callbacks=callbacks,
-        criterion=torch.nn.CrossEntropyLoss(),
-        device=device,
-    )
-    _save_and_visualize_history(history, name, images_path, history_path)
+        figure = display_confusion_matrix_by_pred(
+            y_pred,
+            y_true,
+            labels=labels,
+            save=True,
+            normalize=True,
+            model_name=model_name,
+            decimas=6,
+            store_path=images_path,
+        )
 
-    y_pred, y_true, validation_loss, metrics = validate_model(
-        model,
-        test_loader,
-        checkpoint_path,
-        device,
-        labels,
-    )
+        # Log to MLFlow
+        _log_to_mlflow(
+            hyperparameters,
+            history,
+            validation_loss,
+            model,
+            experiment_name,
+            figure,
+            images_path,
+        )
 
-    print(f"Metrics: {metrics}")
+        # Log model to MLFlow
+        mlflow.pytorch.log_model(
+            model.cpu(),
+            name=f"{model_name}_model",
+            input_example=np.random.randn(32, 1, 2048).astype(np.float32),
+        )
 
-    figure = display_confusion_matrix_by_pred(
-        y_pred,
-        y_true,
-        labels=labels,
-        save=True,
-        normalize=True,
-        model_name=name,
-        decimas=6,
-        store_path=images_path,
-    )
+        # Log model metrics as a JSON artifact
+        mlflow.log_dict(metrics, "metrics.json")
 
-    # Log to MLFlow
-    _log_to_mlflow(
-        hyperparameters,
-        history,
-        validation_loss,
-        model,
-        experiment_name,
-        figure,
-        images_path,
-    )
+        # Store run ID before ending
+        run_id = run.info.run_id
 
-    # Log model to MLFlow
-    mlflow.pytorch.log_model(
-        model.cpu(),
-        name=f"{name}_model",
-        input_example=np.random.randn(32, 1, 2048).astype(np.float32),
-    )
+        # Clean up temporary directory
+        import shutil
 
-    # Log model metrics as a JSON artifact
-    mlflow.log_dict(metrics, "metrics.json")
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
-    # Store run ID before ending
-    run_id = mlflow.active_run().info.run_id if mlflow.active_run() else None
-
-    # End MLFlow run
-    mlflow.end_run()
-
-    # Clean up temporary directory
-    import shutil
-
-    shutil.rmtree(temp_dir, ignore_errors=True)
-
-    return {
-        "name": name,
-        "validation_accuracy": np.max(history["val_acc"]) * 100,
-        "validation_loss": validation_loss,
-        "num_params": count_parameters(model),
-        "hyperparameters": hyperparameters,
-        "metrics": metrics,
-        "mlflow_run_id": run_id,
-    }
+        return {
+            "name": model_name,
+            "validation_accuracy": np.max(history["val_acc"]) * 100,
+            "validation_loss": validation_loss,
+            "num_params": count_parameters(model),
+            "hyperparameters": hyperparameters,
+            "metrics": metrics,
+            "mlflow_run_id": run_id,
+        }
 
 
 def main(experiments: list[Experiment]):
@@ -217,58 +214,60 @@ def run_cross_validation(experiment: dict, debug: bool = False):
 
 
 def _prepair_dataset(experiment: Experiment, debug: bool = False):
-    train_dataset = experiment.get_train_dataset()
-    test_dataset = experiment.get_test_dataset()
+    dataset = experiment.get_dataset()
+    splits = random_split(dataset, [0.8, 0.2])
+    train_dataset = dataset[splits[0].indices]
+    test_dataset = dataset[splits[1].indices]
 
     if debug:
-        X_train = train_dataset.inputs()[:100]
-        y_train = train_dataset.targets()[:100]
-        X_test = test_dataset.inputs()[:100]
-        y_test = test_dataset.targets()[:100]
-    else:
-        X_train = train_dataset.inputs()
-        y_train = train_dataset.targets()
-        X_test = test_dataset.inputs()
-        y_test = test_dataset.targets()
+        train_dataset = train_dataset[:100]
+        test_dataset = test_dataset[:100]
 
-    if experiment.test_with_noise:
-        X_test = add_noise_data(X_test, experiment.noise_level)
+    train_dataset = SimpleBearingDataset(
+        X=train_dataset[0],
+        y=train_dataset[1],
+        labels=dataset.labels(),
+        window_size=dataset.window_size(),
+    )
+    test_dataset = SimpleBearingDataset(
+        X=test_dataset[0],
+        y=test_dataset[1],
+        labels=dataset.labels(),
+        window_size=dataset.window_size(),
+    )
+
+    print(f"Train dataset: {train_dataset.inputs().shape}")
+    print(f"Test dataset: {test_dataset.inputs().shape}")
+
+    preprocessings = []
     if experiment.train_augmentation:
-        X_train_noisy = add_noise_data(X_train, experiment.noise_level)
-        X_train = np.vstack((X_train_noisy, X_train))
-        y_train = np.hstack((y_train, y_train))
-        indeces = np.arange(len(X_train))
-        np.random.shuffle(indeces)
-        X_train = X_train[indeces]
-        y_train = y_train[indeces]
-    elif experiment.train_with_noise:
-        X_train = add_noise_data(X_train, experiment.noise_level)
+        preprocessings.append(
+            TrainAugmentation(train_dataset, test_dataset, experiment.noise_level)
+        )
+    if experiment.test_with_noise or experiment.train_with_noise:
+        preprocessings.append(
+            AddNoise(
+                train_dataset,
+                test_dataset,
+                experiment.noise_level,
+                to_training=experiment.train_with_noise,
+                to_test=experiment.test_with_noise,
+            )
+        )
 
-    scale_data(X_train, X_test)
+    for preprocessing in preprocessings:
+        train_dataset, test_dataset = preprocessing.preprocess()
 
-    del train_dataset, test_dataset
-
-    train_set = torch.utils.data.TensorDataset(
-        torch.tensor(X_train, dtype=torch.float32),
-        torch.tensor(y_train, dtype=torch.long),
-    )
-    test_set = torch.utils.data.TensorDataset(
-        torch.tensor(X_test, dtype=torch.float32),
-        torch.tensor(y_test, dtype=torch.long),
-    )
-
-    del X_train, y_train, X_test, y_test
-
-    train_loader = DataLoader(train_set, batch_size=32, shuffle=True)
-    test_loader = DataLoader(test_set, batch_size=32, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
     return train_loader, test_loader
 
 
 def run_train_validation(experiment: Experiment, debug: bool = False):
     print(f"Running experiment: {experiment.name}")
-    print(experiment.get_train_dataset().labels)
-    num_classes = len(experiment.get_train_dataset().labels())
-    model_configs = get_model_config(num_classes)
+    num_classes = len(experiment.get_dataset().labels())
+    window_size = experiment.get_dataset().window_size()
+    model_configs = get_model_config(num_classes, window_size)
 
     experiment_name = experiment.name
 
@@ -297,17 +296,18 @@ def run_train_validation(experiment: Experiment, debug: bool = False):
         train_loader, test_loader = _prepair_dataset(experiment, debug)
 
         result_split = train_validate_model(
+            experiment=experiment,
+            trial_number=i,
             train_loader=train_loader,
             test_loader=test_loader,
             model=model,
-            name=model_name,
+            model_name=model_name,
             optimizer=optimizer,
             callbacks=callbacks,
             epochs=cfg["epochs"],
             device=device,
             hyperparameters=cfg.get("hyperparameters", {}),  # Pass hyperparameters
-            experiment_name=f"{experiment_name}_{i}",
-            labels=experiment.get_train_dataset().labels(),
+            labels=experiment.get_dataset().labels(),
         )
         split_results.append(result_split)
 
@@ -402,6 +402,8 @@ if __name__ == "__main__":
         help="Debug mode: When enabled, only subset of the data is used. Default is False",
     )
 
+    dotenv.load_dotenv()
+
     args = parser.parse_args()
     DEBUG = args.debug if args.debug else False
     print(f"Debug mode: {DEBUG}")
@@ -417,4 +419,5 @@ if __name__ == "__main__":
         trials=args.trials,
         dataset_name=args.dataset,
     )
+
     main(experiments)

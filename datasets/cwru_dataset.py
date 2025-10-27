@@ -53,13 +53,13 @@ class CrwuDataset(BearingDataset):
         rdir="data/CWRU/",
         rpms=["1797", "1772", "1750", "1730"],
         fault_location="DriveEnd",
-        window_size=2048,
+        seq_len=2048,
     ):
         super().__init__()
         self.rdir = rdir
         self.rpms = rpms
         self.fault_location = fault_location
-        self.window_size = window_size
+        self.seq_len = seq_len
 
         if fault_location not in ["DriveEnd", "FanEnd"]:
             raise ValueError("Fault location must be either DriveEnd or FanEnd")
@@ -93,10 +93,10 @@ class CrwuDataset(BearingDataset):
         infos = sorted(infos, key=lambda line: get_class(line[0], line[2]))
 
         self._load_data(rdir, infos)
-        self._shuffle()
+        self.shuffle()
 
     def window_size(self):
-        self.window_size
+        return self.seq_len
 
     def _mkdir(self, path):
         try:
@@ -124,7 +124,7 @@ class CrwuDataset(BearingDataset):
         if self._load_preprocessed():
             return
 
-        X = np.zeros((0, self.window_size, 1))
+        X = np.zeros((0, self.seq_len, 1))
         y = []
 
         for info in infos:
@@ -145,8 +145,8 @@ class CrwuDataset(BearingDataset):
                 time_series = mat_dict[fanEndKey]
 
             n_samples = (
-                len(time_series) - (len(time_series) % self.window_size)
-            ) / self.window_size
+                len(time_series) - (len(time_series) % self.seq_len)
+            ) / self.seq_len
 
             # Process training data
             clips = np.zeros((0, 1))
@@ -154,16 +154,14 @@ class CrwuDataset(BearingDataset):
                 clips = np.vstack(
                     (
                         clips,
-                        time_series[
-                            cut * self.window_size : (cut + 1) * self.window_size
-                        ],
+                        time_series[cut * self.seq_len : (cut + 1) * self.seq_len],
                     )
                 )
-            clips = clips.reshape(-1, self.window_size, 1)
+            clips = clips.reshape(-1, self.seq_len, 1)
             X = np.vstack((X, clips))
             y.extend([get_class(info[0], info[2]) for _ in range(len(clips))])
 
-        X = X.reshape(-1, 1, self.window_size)
+        X = X.reshape(-1, 1, self.seq_len)
 
         self.X = X
         self.y = np.array(y)
@@ -189,7 +187,7 @@ class CrwuDataset(BearingDataset):
         np.save(os.path.join(self.rdir, FOLDER, "X.npy"), self.X)
         np.save(os.path.join(self.rdir, FOLDER, "y.npy"), self.y)
 
-    def _shuffle(self):
+    def shuffle(self):
         indices = np.arange(len(self.X))
         np.random.shuffle(indices)
         self.X = self.X[indices]
@@ -203,6 +201,16 @@ class CrwuDataset(BearingDataset):
             torch.tensor(self.X[index]).float(),
             torch.tensor(self.y[index]).long(),
         )
+
+    def set_inputs(self, X: torch.Tensor):
+        self.X = X
+
+    def set_targets(self, y: torch.Tensor):
+        self.y = y
+
+    def stack(self, X: torch.Tensor, y: torch.Tensor):
+        self.X = np.vstack((self.X, X))
+        self.y = np.hstack((self.y, y))
 
     def inputs(self):
         return self.X

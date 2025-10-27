@@ -68,6 +68,8 @@ class TransformerEncoderClassifier(nn.Module):
         self.embedding_dim = embedding_dim
         self.with_class_token = with_class_token
 
+        self.normalize = nn.LayerNorm(input_dim)
+
         self.embedding = EmbeddingLinear(
             positional_encoding=positional_encoding,
             embedding_dim=embedding_dim,
@@ -111,6 +113,7 @@ class TransformerEncoderClassifier(nn.Module):
         return x
 
     def forward(self, x):
+        x = self.normalize(x)
         x = self.embedding(x)
         for i in range(self.num_encoders):
             x = getattr(self, f"encoder{i}")(x)

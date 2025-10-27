@@ -9,15 +9,15 @@ def linear_embedding_rule(value, hyperparameters):
     return hyperparameters["embedding_hidden_dim"] == 0
 
 
-def get_model_config(num_classes) -> dict:
+def get_model_config(num_classes, window_size) -> dict:
     return {
         "transformer_encoder_classifier": get_transformer_encoder_classifier_model_config(
-            num_classes
+            num_classes, window_size
         ),
     }
 
 
-def get_transformer_encoder_classifier_model_config(num_classes) -> dict:
+def get_transformer_encoder_classifier_model_config(num_classes, window_size) -> dict:
     return {
         "model": TransformerEncoderClassifier,
         "optimizer": lambda m: Adam(m.parameters(), lr=1e-3),
@@ -25,7 +25,7 @@ def get_transformer_encoder_classifier_model_config(num_classes) -> dict:
             create_expo_lr_cb(opt, gamma=0.9),
         ],
         "hyperparameters": {
-            "input_dim": 2048,
+            "input_dim": window_size,
             "patch_size": 64,
             "positional_encoding": False,
             "with_class_token": True,
