@@ -6,3 +6,4 @@ logs
 mlruns
 mlartifacts
 .env
+model_serve_config.json
