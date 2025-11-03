@@ -36,7 +36,9 @@ class Experiment:
         return self.dataset
 
 
-def dataset(name, experiment_name, window_size=2048, device=None) -> BearingDataset:
+def dataset(
+    name, experiment_name, window_size=2048, max_samples_per_class=None, device=None
+) -> BearingDataset:
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -55,6 +57,7 @@ def dataset(name, experiment_name, window_size=2048, device=None) -> BearingData
             rdir="./data/dataset/PU/",
             window_size=window_size,
             step_size=window_size,
+            max_per_class=max_samples_per_class,
         )
 
         return ds
@@ -74,6 +77,7 @@ def create_experiments(
     dataset_name: str = "cwru",
     window_size: int = 2048,
     device=None,
+    max_samples_per_class=None,
 ) -> list[Experiment]:
     """
     Creates experiment configurations based on provided parameters.
@@ -111,6 +115,7 @@ def create_experiments(
                 experiment_name=name,
                 window_size=window_size,
                 device=device,
+                max_samples_per_class=max_samples_per_class,
             )
 
             experiment_config = Experiment(

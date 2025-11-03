@@ -3,12 +3,6 @@ from models import TransformerEncoderClassifier
 from utils.callbacks import create_expo_lr_cb
 
 
-def linear_embedding_rule(value, hyperparameters):
-    if value == "linear":
-        return hyperparameters["embedding_hidden_dim"] == 0
-    return hyperparameters["embedding_hidden_dim"] == 0
-
-
 def get_model_config(num_classes, window_size) -> dict:
     return {
         "transformer_encoder_classifier": get_transformer_encoder_classifier_model_config(
@@ -28,9 +22,10 @@ def get_transformer_encoder_classifier_model_config(num_classes, window_size) ->
             "input_dim": window_size,
             "patch_size": 64,
             "positional_encoding": False,
+            "dropout_rate": 0.2,
             "with_class_token": True,
-            "num_heads": 8,
-            "num_encoders": 4,
+            "num_heads": 16,
+            "num_encoders": 8,
             "embedding_dim": 64,
             "feedforward_dim": 32,
             "number_of_channels": 1,
