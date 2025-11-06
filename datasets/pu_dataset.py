@@ -78,6 +78,7 @@ class PUDataset:
         force_reload=False,
         seed=None,
         verbose=False,
+        max_per_class=None,
         device="cpu",
     ):
         """
@@ -97,7 +98,7 @@ class PUDataset:
         """
         self.rdir = rdir
         self.seed = seed
-        self.window_size = window_size
+        self.seq_len = window_size
         self.step_size = step_size
         self.artificial_damage = artificial_damage
         self.rotational_speeds = rotational_speeds
@@ -105,6 +106,7 @@ class PUDataset:
         self.radial_forces_newton = radial_forces_newton
         self.force_reload = force_reload
         self.verbose = verbose
+        self.max_per_class = max_per_class
         self.data = None
         self.device = device
 
@@ -159,9 +161,9 @@ class PUDataset:
         """
         Presist data to disk.
         """
-        self.data.to_csv(os.path.join(self.rdir, "data.csv"), index=False)
-        np.save(os.path.join(self.rdir, "X.npy"), self.X.cpu().numpy())
-        np.save(os.path.join(self.rdir, "y.npy"), self.y.cpu().numpy())
+        self.data.to_csv(os.path.join(self.rdir, self._data_name()), index=False)
+        np.save(os.path.join(self.rdir, self._x_name()), self.X.cpu().numpy())
+        np.save(os.path.join(self.rdir, self._y_name()), self.y.cpu().numpy())
         self._log(
             f"Data presisted to disk. {self.data.memory_usage().sum() / 1024 / 1024:.2f} MB"
         )
@@ -172,19 +174,20 @@ class PUDataset:
         """
 
         if (
-            not os.path.exists(os.path.join(self.rdir, "data.csv"))
-            or not os.path.exists(os.path.join(self.rdir, "X.npy"))
-            or not os.path.exists(os.path.join(self.rdir, "y.npy"))
+            not os.path.exists(os.path.join(self.rdir, self._data_name()))
+            or not os.path.exists(os.path.join(self.rdir, self._x_name()))
+            or not os.path.exists(os.path.join(self.rdir, self._y_name()))
         ):
             return False
 
-        self.data = pd.read_csv(os.path.join(self.rdir, "data.csv"))
-        self.X = torch.from_numpy(np.load(os.path.join(self.rdir, "X.npy"))).to(
+        self.data = pd.read_csv(os.path.join(self.rdir, self._data_name()))
+        self.X = torch.from_numpy(np.load(os.path.join(self.rdir, self._x_name()))).to(
             self.device
         )
-        self.y = torch.from_numpy(np.load(os.path.join(self.rdir, "y.npy"))).to(
+        self.y = torch.from_numpy(np.load(os.path.join(self.rdir, self._y_name()))).to(
             self.device
         )
+        self.total_windows = len(self.X)
         return True
 
     def _load_data(self):
@@ -195,18 +198,29 @@ class PUDataset:
             tuple: (X, y)
         """
         if self._load_data_from_disk():
+            # Data loaded from disk already has max_per_class applied (if it was set)
+            # because the filename includes max_per_class suffix
             return self.X, self.y
+
+        # Apply max_per_class limit on metadata BEFORE loading files
+        if self.max_per_class is not None:
+            self._apply_max_per_class_on_metadata()
 
         file_names = self.data["file_name"].tolist()
         labels = self.data["label"].tolist()
-        counts = self.data["window_counts"].tolist()
+
+        # Use windows_to_take if available (when max_per_class is set), otherwise use window_counts
+        if "windows_to_take" in self.data.columns:
+            counts = self.data["windows_to_take"].tolist()
+        else:
+            counts = self.data["window_counts"].tolist()
 
         ## determine dtype from the first file to preallocate correctly
         sample = np.load(file_names[0], mmap_mode="r")
         del sample
 
         self.X = torch.empty(
-            (self.total_windows, self.window_size, 1), dtype=torch.float64
+            (self.total_windows, self.seq_len, 1), dtype=torch.float64
         ).to(self.device)
         self.y = torch.empty((self.total_windows,), dtype=torch.int64).to(self.device)
 
@@ -216,6 +230,10 @@ class PUDataset:
             arr = np.load(file_names[i])
             if arr.ndim == 2:
                 arr = np.expand_dims(arr, axis=-1)
+
+            # Only take the first 'counts[i]' windows from this file
+            arr = arr[: counts[i]]
+
             start = offsets[i]
             end = start + arr.shape[0]
             self.X[start:end, :, :] = torch.from_numpy(arr).to(self.device)
@@ -228,6 +246,78 @@ class PUDataset:
         self.X = self.X.permute(0, 2, 1)
 
         self._presist_data()
+
+    def _apply_max_per_class_on_metadata(self):
+        """
+        Apply max_per_class limit on the metadata DataFrame before loading files.
+        This allows loading only the necessary files, saving memory.
+        """
+        self._log(
+            f"Applying max_per_class limit on metadata: {self.max_per_class} samples per class"
+        )
+
+        # Set random seed if provided for reproducibility
+        if self.seed is not None:
+            np.random.seed(self.seed)
+
+        selected_rows = []
+
+        # Group by label (class)
+        for label in self.data["label"].unique():
+            class_data = self.data[self.data["label"] == label].copy()
+            total_windows_in_class = class_data["window_counts"].sum()
+
+            self._log(
+                f"Class {label}: {total_windows_in_class} total windows in {len(class_data)} files"
+            )
+
+            if total_windows_in_class <= self.max_per_class:
+                # Keep all files for this class
+                class_data["windows_to_take"] = class_data["window_counts"]
+                selected_rows.append(class_data)
+                self._log(
+                    f"Class {label}: keeping all {total_windows_in_class} windows"
+                )
+            else:
+                # Need to select a subset of files to reach approximately max_per_class
+                # Shuffle the files randomly
+                class_data = class_data.sample(
+                    frac=1, random_state=self.seed
+                ).reset_index(drop=True)
+
+                # Greedily select files until we reach max_per_class
+                cumsum = 0
+                selected_indices = []
+                windows_to_take = []  # Track how many windows to take from each file
+
+                for idx, row in class_data.iterrows():
+                    if cumsum >= self.max_per_class:
+                        break
+                    selected_indices.append(idx)
+
+                    # Determine how many windows to take from this file
+                    remaining = self.max_per_class - cumsum
+                    windows_from_file = min(row["window_counts"], remaining)
+                    windows_to_take.append(windows_from_file)
+                    cumsum += windows_from_file
+
+                selected_class_data = class_data.loc[selected_indices].copy()
+                selected_class_data["windows_to_take"] = windows_to_take
+                selected_rows.append(selected_class_data)
+
+                actual_windows = sum(windows_to_take)
+                self._log(
+                    f"Class {label}: selected {len(selected_indices)} files with {actual_windows} windows "
+                    f"(target: {self.max_per_class})"
+                )
+
+        # Combine all selected rows
+        self.data = pd.concat(selected_rows, ignore_index=True)
+
+        # Update total_windows - use windows_to_take which reflects actual windows to load
+        self.total_windows = int(self.data["windows_to_take"].sum())
+
+        self._log(f"Total windows after max_per_class: {self.total_windows}")
 
     def _load_existing_processed_data(self):
         """
@@ -247,9 +337,13 @@ class PUDataset:
                 return False
         return False
 
+    def _file_info_name(self):
+        max_class_suffix = f"_{self.max_per_class}" if self.max_per_class else ""
+        return f"files_information_{self.seq_len}{max_class_suffix}.json"
+
     def _load_or_create_files_info(self):
         """Load existing files information or create new one."""
-        files_info_path = os.path.join(self.rdir, "files_information.json")
+        files_info_path = os.path.join(self.rdir, self._file_info_name())
 
         if os.path.exists(files_info_path) and not self.force_reload:
             try:
@@ -261,6 +355,18 @@ class PUDataset:
                 self._get_files_info()
         else:
             self._get_files_info()
+
+    def _x_name(self):
+        max_class_suffix = f"_{self.max_per_class}" if self.max_per_class else ""
+        return f"x_{self.seq_len}{max_class_suffix}.npy"
+
+    def _y_name(self):
+        max_class_suffix = f"_{self.max_per_class}" if self.max_per_class else ""
+        return f"y_{self.seq_len}{max_class_suffix}.npy"
+
+    def _data_name(self):
+        max_class_suffix = f"_{self.max_per_class}" if self.max_per_class else ""
+        return f"data_{self.seq_len}{max_class_suffix}.csv"
 
     def _process_and_save_data(self):
         """Process all relevant files and save processed data."""
@@ -289,7 +395,7 @@ class PUDataset:
         self.data = pd.DataFrame(
             {"file_name": file_names, "window_counts": window_counts, "label": labels}
         )
-        self.data.to_csv(os.path.join(self.rdir, "data.csv"), index=False)
+        self.data.to_csv(os.path.join(self.rdir, self._data_name()), index=False)
 
     def _should_process_file(self, file):
         """
@@ -338,7 +444,7 @@ class PUDataset:
         original_file_name = file["file"].split("/")[-1].split(".")[0]
         processed_filename = (
             f"{file['code']}_{file['rot_speed']}_{file['load_torque']}_"
-            f"{file['radial_force']}_{file['rep']}_{self.window_size}_{self.step_size}.npy"
+            f"{file['radial_force']}_{file['rep']}_{self.seq_len}_{self.step_size}.npy"
         )
         processed_file_path = os.path.join(class_dir, processed_filename)
 
@@ -351,9 +457,7 @@ class PUDataset:
             print(f"Processing file: {original_file_name}")
             mat_data = loadmat(file["file"])
             data = mat_data[original_file_name]["Y"][0][0][0][6][2].reshape((-1))
-            windowed_data = slicer(
-                data, self.window_size, self.step_size, return_df=False
-            )
+            windowed_data = slicer(data, self.seq_len, self.step_size, return_df=False)
             number_of_windows = windowed_data.shape[0]
 
             # Save processed data
@@ -366,7 +470,7 @@ class PUDataset:
 
     def _save_files_info(self):
         """Save files information to JSON file."""
-        files_info_path = os.path.join(self.rdir, "files_information.json")
+        files_info_path = os.path.join(self.rdir, self._file_info_name())
         with open(files_info_path, "w") as f:
             json.dump(self.files_information, f, indent=2)
 
@@ -514,13 +618,13 @@ class PUDataset:
         return ["Healthy", "InnerRace", "OuterRace"]
 
     def window_size(self):
-        return self.window_size
+        return self.seq_len
 
     def __repr__(self):
-        return f"PU_Dataset(X={self.X.shape}, y={self.y.shape}, window_size={self.window_size})"
+        return f"PUDataset(X={self.X.shape}, y={self.y.shape}, seq_len={self.seq_len})"
 
     def __str__(self):
-        return f"PU_Dataset(X={self.X.shape}, y={self.y.shape}, window_size={self.window_size})"
+        return f"PUDataset(X={self.X.shape}, y={self.y.shape}, seq_len={self.seq_len})"
 
 
 def slicer(array, win, step, return_df=True):
@@ -548,120 +652,6 @@ def slicer(array, win, step, return_df=True):
         return pd.DataFrame(windows)
     else:
         return np.array(windows)
-
-
-class PU_Dataset(BearingDataset):
-    def __init__(
-        self,
-        file_path,
-        data_raw,
-        window_size=2048,
-        step_size=2048,
-        device="cpu",
-    ):
-        self.file_path = file_path
-        self.window_size = window_size
-        self.step_size = step_size
-        self.device = device
-
-        self.total_windows = data_raw["window_counts"].sum()
-
-        self.data = data_raw.copy()
-
-        self.index_map = {}
-
-        self.X = np.zeros((0, self.window_size, 1))
-        self.y = np.zeros((0))
-
-        self._load_data(data_raw)
-
-    def _presist_data(self):
-        np.save(self.file_path + "_X.npy", self.X.cpu().numpy())
-        np.save(self.file_path + "_y.npy", self.y.cpu().numpy())
-
-    def _load_data(self, data_raw: pd.DataFrame):
-        if os.path.exists(self.file_path):
-            self.X = torch.from_numpy(np.load(self.file_path + "_X.npy")).to(
-                self.device
-            )
-            self.y = torch.from_numpy(np.load(self.file_path + "_y.npy")).to(
-                self.device
-            )
-            print(f"Loaded data from {self.file_path}")
-            return
-
-        file_names = data_raw["file_name"].tolist()
-        labels = data_raw["label"].tolist()
-        counts = data_raw["window_counts"].tolist()
-
-        # Determine dtype from the first file to preallocate correctly
-        sample = np.load(file_names[0], mmap_mode="r")
-        x_dtype = sample.dtype
-        del sample
-
-        # Preallocate arrays
-        self.X = np.empty((self.total_windows, self.window_size, 1), dtype=x_dtype)
-        self.y = np.empty((self.total_windows,), dtype=np.int64)
-
-        # Compute write offsets for each file
-        offsets = np.cumsum([0] + counts[:-1])
-
-        def load_and_place(i: int):
-            arr = np.load(file_names[i])
-            if arr.ndim == 2:
-                arr = np.expand_dims(arr, axis=-1)
-            start = offsets[i]
-            end = start + arr.shape[0]
-            self.X[start:end, :, :] = arr
-            self.y[start:end] = labels[i]
-
-        max_workers = min(32, (os.cpu_count() or 4) * 2)
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            list(executor.map(load_and_place, range(len(file_names))))
-
-        self.X = torch.from_numpy(self.X).to(self.device)
-        self.y = torch.from_numpy(self.y).to(self.device)
-        self.X = self.X.permute(0, 2, 1)
-
-        self._presist_data()
-
-    def __len__(self):
-        return self.total_windows
-
-    def __getitem__(self, idx):
-        return self.X[idx].float(), self.y[idx].long()
-
-    def stack(self, X: torch.Tensor, y: torch.Tensor):
-        self.X = np.vstack((self.X, X))
-        self.y = np.hstack((self.y, y))
-
-    def set_inputs(self, X: torch.Tensor):
-        self.X = X
-
-    def set_targets(self, y: torch.Tensor):
-        self.y = y
-
-    def shuffle(self):
-        indices = np.arange(len(self.X))
-        np.random.shuffle(indices)
-        self.X = self.X[indices]
-        self.y = np.array(tuple(self.y[i] for i in indices))
-
-    def window_size(self):
-        return self.window_size
-
-    def inputs(self):
-        return self.X
-
-    def targets(self):
-        return self.y
-
-    def labels(self):
-        return [
-            "Healthy",
-            "InnerRace",
-            "OuterRace",
-        ]
 
 
 if __name__ == "__main__":

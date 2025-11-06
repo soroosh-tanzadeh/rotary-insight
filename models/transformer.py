@@ -1,3 +1,4 @@
+import mlflow
 import torch
 from torch import nn
 from .embedding import EmbeddingLinear
@@ -15,7 +16,6 @@ class TransformerEncoderBlock(nn.Module):
         self.embedding_dim = embedding_dim
         self.with_class_token = with_class_token
 
-        self.layer_norm0 = nn.LayerNorm(embedding_dim)
         self.layer_norm1 = nn.LayerNorm(embedding_dim)
         self.layer_norm2 = nn.LayerNorm(embedding_dim)
 
@@ -29,7 +29,6 @@ class TransformerEncoderBlock(nn.Module):
         )
 
     def forward(self, x):
-        x = self.layer_norm0(x)
         x = x + self.attention(x, x, x)[0]
 
         x = self.layer_norm1(x)
@@ -95,7 +94,7 @@ class TransformerEncoderClassifier(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Linear(embedding_dim, feedforward_dim),
-            nn.GELU(),
+            nn.ReLU(),
             nn.Linear(feedforward_dim, num_classes),
         )
 

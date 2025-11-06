@@ -398,6 +398,12 @@ if __name__ == "__main__":
         help="Window size for the dataset",
     )
     parser.add_argument(
+        "--max_samples_per_class",
+        type=int,
+        default=None,
+        help="Maximum samples per class for the dataset",
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         default=0,
@@ -412,6 +418,7 @@ if __name__ == "__main__":
     experiments = create_experiments(
         name=args.experiment,
         window_size=args.window_size,
+        max_samples_per_class=args.max_samples_per_class,
         test_with_noise=args.test_with_noise,
         train_with_noise=args.train_with_noise,
         train_augmentation=args.train_augmentation,
