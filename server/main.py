@@ -17,6 +17,7 @@ import uvicorn
 import os
 import io
 import time
+import re
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
@@ -28,6 +29,10 @@ from .models import (
     ModelsListResponse,
     HealthResponse,
     ErrorResponse,
+    FFTRequest,
+    FFTResponse,
+    ExamplesListResponse,
+    ExampleFile,
 )
 from .auth import get_auth_handler
 from .inference import ModelManager
@@ -406,6 +411,96 @@ async def predict_from_csv(
         )
 
 
+@app.post("/fft", response_model=FFTResponse,dependencies=[Depends(get_auth_handler().verify_api_key)],)
+async def perform_fft(request: FFTRequest):
+    """
+    Perform Fast Fourier Transform (FFT) on a given time-domain signal.
+
+    Example:
+    ```json
+    {
+        "signal": [0.1, 0.2, 0.3, 0.4],
+        "n": 512
+    }
+    ```
+    """
+    try:
+        signal = np.array(request.signal, dtype=np.float32)
+        n = request.n or len(signal)
+
+        # Pad or truncate to n length
+        if len(signal) < n:
+            signal = np.pad(signal, (0, n - len(signal)), mode="constant")
+        elif len(signal) > n:
+            signal = signal[:n]
+
+        # Perform FFT
+        fft_values = np.fft.fft(signal, n=n)
+
+        # Compute magnitude (L2 norm)
+        magnitude = np.abs(fft_values)
+
+        # Frequencies (normalized 0 → Nyquist)
+        freq = np.fft.fftfreq(n, d=1.0)  # d=1 means normalized frequency spacing
+
+        # Only keep positive half (for real signals)
+        half = n // 2
+        freq = freq[:half]
+        magnitude = magnitude[:half]
+
+        return FFTResponse(
+            n=n,
+            frequencies=freq.tolist(),
+            magnitudes=magnitude.tolist(),
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"FFT computation failed: {str(e)}",
+        )
+
+# Directory containing CSV examples
+EXAMPLES_DIR = os.getenv("EXAMPLES_DIR", "samples")
+
+@app.get(
+    "/examples",
+    response_model=ExamplesListResponse,
+    tags=["Examples"],
+    summary="List example CSV files for fault detection",
+)
+async def list_example_files():
+    """
+    List all available example CSV files for fault detection.
+    The files are expected to follow the naming pattern:
+    `sample{index}_{fault_name}.csv`
+    """
+    if not os.path.exists(EXAMPLES_DIR):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Examples directory not found: {EXAMPLES_DIR}",
+        )
+
+    files = [f for f in os.listdir(EXAMPLES_DIR) if f.endswith(".csv")]
+    examples = []
+
+    pattern = re.compile(r"sample(\d+)_(.+)\.csv", re.IGNORECASE)
+
+    for f in files:
+        match = pattern.match(f)
+        if match:
+            index = int(match.group(1))
+            fault_name = match.group(2)
+            examples.append(
+                ExampleFile(
+                    filename=f,
+                    sample_index=index,
+                    fault_name=fault_name,
+                    download_url=f"/examples/download/{f}",
+                )
+            )
+
+    return ExamplesListResponse(examples=examples, total_count=len(examples))
 
 
 # Custom exception handler
