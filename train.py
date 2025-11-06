@@ -114,13 +114,10 @@ def train_validate_model(
     callbacks.append(checkpoint_cb)
 
     # Set MLFlow experiment and start run
-    s3_url = os.getenv("MLFLOW_S3_ENDPOINT_URL")
-    print(f"MLFlow S3 endpoint URL: {s3_url}")
     mlflow_experiment = mlflow.get_experiment_by_name(experiment_name)
     if mlflow_experiment is None:
         mlflow_experiment = mlflow.create_experiment(
             name=experiment_name,
-            # artifact_location=s3_url,
         )
         mlflow_experiment = mlflow.set_experiment(experiment_id=mlflow_experiment)
     print(f"Running run")
@@ -214,15 +211,15 @@ def run_cross_validation(experiment: dict, debug: bool = False):
     raise NotImplementedError()
 
 
-def _prepair_dataset(experiment: Experiment, debug: bool = False):
+def _prepar_dataset(experiment: Experiment, debug: bool = False):
     dataset = experiment.get_dataset()
     splits = random_split(dataset, [0.8, 0.2])
     train_dataset = dataset[splits[0].indices]
     test_dataset = dataset[splits[1].indices]
 
     if debug:
-        train_dataset = train_dataset[:100]
-        test_dataset = test_dataset[:100]
+        train_dataset = train_dataset[:10]
+        test_dataset = test_dataset[:10]
 
     train_dataset = SimpleBearingDataset(
         X=train_dataset[0],
@@ -294,7 +291,7 @@ def run_train_validation(experiment: Experiment, debug: bool = False):
             f"Training {model_name}, number of parameters: {count_parameters(model):,}"
         )
 
-        train_loader, test_loader = _prepair_dataset(experiment, debug)
+        train_loader, test_loader = _prepar_dataset(experiment, debug)
 
         result_split = train_validate_model(
             experiment=experiment,
