@@ -17,6 +17,7 @@ import uvicorn
 import os
 import io
 import time
+import re
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
@@ -29,7 +30,9 @@ from .models import (
     HealthResponse,
     ErrorResponse,
     FFTRequest,
-    FFTResponse
+    FFTResponse,
+    ExamplesListResponse,
+    ExampleFile,
 )
 from .auth import get_auth_handler
 from .inference import ModelManager
@@ -456,6 +459,48 @@ async def perform_fft(request: FFTRequest):
             status_code=500,
             detail=f"FFT computation failed: {str(e)}",
         )
+
+# Directory containing CSV examples
+EXAMPLES_DIR = os.getenv("EXAMPLES_DIR", "samples")
+
+@app.get(
+    "/examples",
+    response_model=ExamplesListResponse,
+    tags=["Examples"],
+    summary="List example CSV files for fault detection",
+)
+async def list_example_files():
+    """
+    List all available example CSV files for fault detection.
+    The files are expected to follow the naming pattern:
+    `sample{index}_{fault_name}.csv`
+    """
+    if not os.path.exists(EXAMPLES_DIR):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Examples directory not found: {EXAMPLES_DIR}",
+        )
+
+    files = [f for f in os.listdir(EXAMPLES_DIR) if f.endswith(".csv")]
+    examples = []
+
+    pattern = re.compile(r"sample(\d+)_(.+)\.csv", re.IGNORECASE)
+
+    for f in files:
+        match = pattern.match(f)
+        if match:
+            index = int(match.group(1))
+            fault_name = match.group(2)
+            examples.append(
+                ExampleFile(
+                    filename=f,
+                    sample_index=index,
+                    fault_name=fault_name,
+                    download_url=f"/examples/download/{f}",
+                )
+            )
+
+    return ExamplesListResponse(examples=examples, total_count=len(examples))
 
 
 # Custom exception handler

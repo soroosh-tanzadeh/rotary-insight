@@ -117,3 +117,15 @@ class FFTResponse(BaseModel):
     n: int = Field(..., description="FFT length used for transformation")
     frequencies: List[float] = Field(..., description="Frequencies (normalized units)")
     magnitudes: List[float] = Field(..., description="Magnitude spectrum (L2 norm)")
+
+
+class ExampleFile(BaseModel):
+    """Metadata about a sample example file."""
+    filename: str = Field(..., description="Filename of the sample CSV file")
+    sample_index: int = Field(..., description="Sample index extracted from the filename")
+    fault_name: str = Field(..., description="Fault type extracted from the filename")
+
+class ExamplesListResponse(BaseModel):
+    """Response model for list of example files."""
+    examples: List[ExampleFile] = Field(..., description="List of example CSV files")
+    total_count: int = Field(..., description="Total number of example files found")
