@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from pathlib import Path
 
+model_manager = None  # Global model manager instance
 
 # Class names for CWRU dataset
 CWRU_CLASS_NAMES = [
@@ -255,3 +256,16 @@ class ModelManager:
         if model_name in self.models:
             del self.models[model_name]
             print(f"Unloaded model '{model_name}'")
+
+
+def get_model_manager() -> ModelManager:
+    """Get the global model manager instance."""
+    global model_manager
+    return model_manager
+
+
+def setup_model_manager(config_path: str, mlflow_uri: str):
+    """Set up the global model manager instance."""
+    global model_manager
+    model_manager = ModelManager(config_path, mlflow_uri)
+    model_manager.load_all_models()

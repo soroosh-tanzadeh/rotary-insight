@@ -1,0 +1,4 @@
+FROM ghcr.io/mlflow/mlflow:v3.5.1
+
+# Install MySQL client
+RUN pip install pymysql botocore boto3
