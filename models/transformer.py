@@ -112,6 +112,9 @@ class TransformerEncoderClassifier(nn.Module):
         return x
 
     def forward(self, x):
+        x = torch.fft.fft(x, dim=-1)
+        x = torch.abs(x)
+
         x = self.normalize(x)
         x = self.embedding(x)
         for i in range(self.num_encoders):

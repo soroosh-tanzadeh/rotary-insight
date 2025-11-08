@@ -2,6 +2,8 @@ import torch
 from datasets.dataset import BearingDataset
 from datasets.cwru_dataset import CrwuDataset
 from datasets.pu_dataset import PUDataset
+from datasets.preprocessings.add_noise import AddNoise
+from datasets.preprocessings.train_augmentation import TrainAugmentation
 
 
 class Experiment:
