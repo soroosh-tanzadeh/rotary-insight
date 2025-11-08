@@ -2,8 +2,6 @@ import torch
 import torchvision.transforms as transforms
 from torchvision.models.resnet import ResNet, Bottleneck
 import torch.nn as nn
-import mlflow
-from dotenv import load_dotenv
 
 
 class ResNetClassfier(nn.Module):
