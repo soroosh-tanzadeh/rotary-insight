@@ -100,87 +100,100 @@ async def predict(request: InferenceRequest):
     dependencies=[Depends(get_auth_handler().verify_api_key)],
 )
 async def predict_from_csv(
-    file: UploadFile = File(
-        ..., description="CSV file containing signal data (one channel)"
-    ),
-    model_name: str = Form(..., description="Model name to use for inference"),
-    return_probabilities: bool = Form(False, description="Return class probabilities"),
+    file: UploadFile = File(..., description="CSV file containing signal data"),
+    model_name: str = Form(...),
+    return_probabilities: bool = Form(False),
 ):
     """
-    Perform model inference on a CSV file containing one or more signal samples.
+    Perform model inference on a CSV containing one or more signal channels.
+    Supports multi-channel + automatic sliding-window segmentation.
 
-    Expected CSV format:
-    ```
-    row,ch1
-    0.0,-0.06724814371257484
-    1.0,-0.22822135728542914
-    ...
-    ```
-
-    Example curl:
-    ```
-    curl -X POST "http://127.0.0.1:3000/csv/predict" \
-        -H "X-API-Key: your_api_key" \
-        -F "file=@sample1_Normal.csv" \
-        -F "model_name=transformer_encoder_cwru_512"
-    ```
+    Expected CSV format example:
+    row,ch1,ch2,ch3
+    0.0,0.12,0.09,-0.03
+    1.0,0.15,0.08,-0.02
+    2.0,0.10,0.07,-0.01
     """
 
     model_manager = get_model_manager()
-
     start_time = time.time()
 
     try:
-        # Read CSV into pandas DataFrame
+        # Read CSV
         contents = await file.read()
         df = pd.read_csv(io.BytesIO(contents))
 
-        # Validate column
-        if "ch1" not in df.columns:
-            raise ValueError("CSV file must contain a 'ch1' column.")
+        # Detect channel columns
+        channel_cols = [c for c in df.columns if c.lower().startswith("ch")]
+        if not channel_cols:
+            raise ValueError("CSV must contain at least one channel column (ch1, ch2, ...)")
 
-        # Extract signal
-        signal = df["ch1"].values.astype(np.float32)
+        # Extract signals
+        signals = df[channel_cols].values.astype(np.float32)  # (L, C)
+        signal_length, num_channels = signals.shape
 
-        # Get expected window size from model config
+        # Model config
         config = model_manager.get_model_config(model_name)
-        window_size = config.get("window_size", len(signal))
+        window_size = config.get("window_size", signal_length)
+        expected_channels = config.get("num_channels", 1)
 
-        # Pad or trim signal to expected length
-        if len(signal) < window_size:
-            pad_width = window_size - len(signal)
-            signal = np.pad(signal, (0, pad_width), mode="constant")
-        elif len(signal) > window_size:
-            signal = signal[:window_size]
+        if num_channels != expected_channels:
+            raise ValueError(
+                f"Model expects {expected_channels} channels, but got {num_channels}"
+            )
 
-        # Reshape to (batch=1, channels=1, signal_length)
-        input_data = np.expand_dims(np.expand_dims(signal, axis=0), axis=0)
+        # SLIDING WINDOW
+        if signal_length <= window_size:
+            # pad if needed
+            if signal_length < window_size:
+                pad = window_size - signal_length
+                signals = np.pad(signals, ((0, pad), (0, 0)), mode="constant")
+            windows = [signals.T]  # shape: (C, window_size)
+        else:
+            # split into windows of equal size
+            num_windows = signal_length // window_size
+            windows = [
+                signals[i * window_size : (i + 1) * window_size].T
+                for i in range(num_windows)
+            ]
 
-        # Perform inference
+        # shape: (num_windows, C, window_size)
+        input_data = np.stack(windows, axis=0)
+
+        # Inference
         predictions, probabilities = model_manager.predict(
             model_name=model_name,
             data=input_data,
             return_probabilities=return_probabilities,
         )
 
-        # Get class names
         class_names = model_manager.get_class_names(model_name)
 
-        # Build prediction result
-        pred_class = int(predictions[0])
-        result = PredictionResult(
-            predicted_class=pred_class,
-            class_name=class_names[pred_class],
-            confidence=(
-                float(probabilities[0, pred_class])
-                if probabilities is not None
-                else 0.0
-            ),
-            probabilities=(
-                probabilities[0].tolist() if probabilities is not None else None
-            ),
-        )
+        # AGGREGATION (multi-window result)
+        if return_probabilities and probabilities is not None:
+            avg_probs = probabilities.mean(axis=0)  # average over windows
+            final_class = int(avg_probs.argmax())
 
+            result = PredictionResult(
+                predicted_class=final_class,
+                class_name=class_names[final_class],
+                confidence=float(avg_probs[final_class]),
+                probabilities=avg_probs.tolist(),
+            )
+
+        else:
+            # simple majority vote
+            unique, counts = np.unique(predictions, return_counts=True)
+            final_class = int(unique[counts.argmax()])
+
+            result = PredictionResult(
+                predicted_class=final_class,
+                class_name=class_names[final_class],
+                confidence=1.0,
+                probabilities=None,
+            )
+
+        # return response
         processing_time = (time.time() - start_time) * 1000
 
         return InferenceResponse(
@@ -190,9 +203,9 @@ async def predict_from_csv(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Inference failed: {str(e)}",
         )
