@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-persian;
+    direction: rtl;
+  }
+  
+  [dir="rtl"] {
+    direction: rtl;
+    font-family: 'Vazir', sans-serif;
+  }
+  
+  [dir="ltr"] {
+    direction: ltr;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-persian {
+    font-family: 'Vazir', sans-serif;
+  }
+  
+  .font-english {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
