@@ -3,7 +3,7 @@ Pydantic models for request and response validation.
 """
 
 from server.dto.inference import InferenceRequest, InferenceResponse, PredictionResult
-from server.dto.models import ModelInfo, ModelsListResponse
+from server.dto.models import ModelInfo, ModelsListResponse, WindowSizesResponse
 from server.dto.health import HealthResponse
 from server.dto.error import ErrorResponse
 from server.dto.fft import FFTRequest, FFTResponse
@@ -15,6 +15,7 @@ __all__ = [
     "PredictionResult",
     "ModelInfo",
     "ModelsListResponse",
+    "WindowSizesResponse",
     "HealthResponse",
     "ErrorResponse",
     "FFTRequest",
