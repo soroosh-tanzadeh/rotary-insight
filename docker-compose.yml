@@ -42,32 +42,32 @@ services:
     restart: unless-stopped
 
   # Inference API server
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.api
-  #   container_name: rotary-api
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     - MLFLOW_TRACKING_URI=http://mlflow:5000
-  #     - HOST=0.0.0.0
-  #     - PORT=8000
-  #     - MODEL_CONFIG_PATH=model_serve_config.json
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./model_serve_config.json:/app/model_serve_config.json:ro
-  #   depends_on:
-  #     mlflow:
-  #       condition: service_healthy
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-  #     interval: 30s
-  #     timeout: 3s
-  #     retries: 3
-  #     start_period: 60s
-  #   restart: unless-stopped
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: rotary-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - HOST=0.0.0.0
+      - PORT=8000
+      - MODEL_CONFIG_PATH=model_serve_config.json
+    env_file:
+      - .env
+    volumes:
+      - ./model_serve_config.json:/app/model_serve_config.json:ro
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
 
 networks:
   default:

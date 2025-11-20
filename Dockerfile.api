@@ -18,7 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY server/ ./server/
 COPY models/ ./models/
 COPY datasets/ ./datasets/
-COPY preprocessings/ ./preprocessings/
 COPY utils/ ./utils/
 COPY model_configs.py .
 COPY experiment_configs.py .

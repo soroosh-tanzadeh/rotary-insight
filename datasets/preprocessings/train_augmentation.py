@@ -1,5 +1,5 @@
-from preprocessings.base import BasePreprocessing
-from preprocessings.utils import add_noise_data
+from datasets.preprocessings.base import BasePreprocessing
+from datasets.preprocessings.utils import add_noise_data
 from datasets.dataset import BearingDataset
 
 
