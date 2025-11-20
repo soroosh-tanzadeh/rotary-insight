@@ -90,6 +90,7 @@ cp model_serve_config.example.json model_serve_config.json
 - [Environment Setup](ENV_SETUP.md)
 - [Server Documentation](server/README.md)
 - [Docker Deployment](DOCKER_DEPLOYMENT.md)
+- [Developer Guide](DEVELOPER_GUIDE.md)
 
 ## Project Structure
 

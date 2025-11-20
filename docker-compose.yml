@@ -3,12 +3,10 @@ services:
     image: mysql:8.0
     container_name: rotary-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: examplepassword
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: rotarydb
       MYSQL_USER: rotaryuser
-      MYSQL_PASSWORD: rotarypass
-    ports:
-      - "3306:3306"
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - ./data/mysql:/var/lib/mysql
     healthcheck:
@@ -34,9 +32,10 @@ services:
       mlflow server
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri mysql+pymysql://rotaryuser:rotarypass@mysql:3306/rotarydb
+      --backend-store-uri mysql+pymysql://rotaryuser:${MYSQL_PASSWORD}@mysql:3306/rotarydb
       --serve-artifacts
-      --default-artifact-root s3://research-bearing-fault
+      --default-artifact-root ${MLFLOW_DEFAULT_ARTIFACT_ROOT}
+      --app-name basic-auth
     env_file:
       - .env
     restart: unless-stopped
