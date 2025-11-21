@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from server.inference import get_model_manager
 from server.auth import get_auth_handler
-from server.dto import ModelsListResponse
+from server.dto import ModelsListResponse, WindowSizesResponse
+from typing import Optional
 import models
 
 router = APIRouter(
@@ -18,7 +19,7 @@ router = APIRouter(
     summary="List available models",
     dependencies=[Depends(get_auth_handler().verify_api_key)],
 )
-async def list_models():
+async def list_models(window_size: Optional[int] = None):
     """
     List all available models with their configurations.
 
@@ -29,12 +30,35 @@ async def list_models():
     - Loading status
     """
     try:
-        models_info = get_model_manager().list_models()
+        models_info = get_model_manager().list_models(window_size=window_size)
         return ModelsListResponse(models=models_info, total_count=len(models_info))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list models: {str(e)}",
+        )
+
+
+@router.get(
+    "/window-sizes",
+    response_model=WindowSizesResponse,
+    tags=["Models"],
+    summary="List available window sizes",
+    dependencies=[Depends(get_auth_handler().verify_api_key)],
+)
+async def get_window_sizes():
+    """
+    List all available window sizes across all models.
+    
+    Returns a list of unique window sizes supported by the available models.
+    """
+    try:
+        window_sizes = get_model_manager().get_available_window_sizes()
+        return WindowSizesResponse(window_sizes=window_sizes)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list window sizes: {str(e)}",
         )
 
 

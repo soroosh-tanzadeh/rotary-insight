@@ -25,3 +25,10 @@ class ModelsListResponse(BaseModel):
     models: Dict[str, ModelInfo] = Field(..., description="Available models")
     total_count: int = Field(..., description="Total number of models")
 
+
+class WindowSizesResponse(BaseModel):
+    """Response model for listing available window sizes."""
+
+    window_sizes: List[int] = Field(..., description="List of available window sizes")
+
+

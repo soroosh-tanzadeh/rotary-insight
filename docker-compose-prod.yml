@@ -17,47 +17,45 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # MLflow server
   mlflow:
-    build:
-      context: .
-      dockerfile: Dockerfile.mlflow
-    image: rotary-mlflow:latest
+    image: ghcr.io/rotary-insight/rotary-insight-mlflow
     container_name: rotary-mlflow
     depends_on:
       mysql:
         condition: service_healthy
-    ports:
-      - "5000:5000"
     volumes:
       - ./mlartifacts:/app/mlartifacts
     command: >
       mlflow server
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri mysql+pymysql://rotaryuser:rotary123@mysql:3306/rotarydb
+      --backend-store-uri mysql+pymysql://rotaryuser:${MYSQL_PASSWORD}@mysql:3306/rotarydb
       --serve-artifacts
       --default-artifact-root ${MLFLOW_DEFAULT_ARTIFACT_ROOT}
-    healthcheck:
-      test: ["CMD-SHELL", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 60s
     env_file:
       - .env
     restart: unless-stopped
 
-  # Inference API server
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    container_name: rotary-api
+  nginx:
+    image: nginx:1.28-bookworm
+    container_name: rotary-nginx
     depends_on:
       - mlflow
     ports:
-      - "8000:8000"
+      - "5001:443"
+      - "8001:8001"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/htpasswd:/etc/nginx/htpasswd:ro
+      - ./nginx/ssl:/etc/nginx/ssl
+    env_file:
+      - .env
+    restart: unless-stopped
+  
+  api:
+    image: ghcr.io/rotary-insight/rotary-insight-api
+    depends_on:
+      - mlflow
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       - HOST=0.0.0.0
