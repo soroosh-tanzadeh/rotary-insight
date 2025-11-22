@@ -42,12 +42,17 @@ MODEL_CONFIG_PATH=model_serve_config.json
 
 Create or edit `model_serve_config.json`:
 
+Models can be loaded from either MLflow or local files using the `stored_in` option:
+
+**MLflow Model (default):**
+
 ```json
 {
 	"models": {
 		"transformer_encoder_cwru_512": {
 			"path": "models:/transformer_encoder_cwru_512/1",
 			"type": "pytorch",
+			"stored_in": "mlflow",
 			"window_size": 512,
 			"dataset_name": "CWRU",
 			"task": "classification"
@@ -55,6 +60,32 @@ Create or edit `model_serve_config.json`:
 	}
 }
 ```
+
+**Local File Model:**
+
+```json
+{
+	"models": {
+		"my_local_model": {
+			"path": "/path/to/local/model.pt",
+			"type": "pytorch",
+			"stored_in": "file",
+			"window_size": 1024,
+			"dataset_name": "CWRU",
+			"task": "classification"
+		}
+	}
+}
+```
+
+**Configuration Options:**
+
+- `path`: MLflow URI (e.g., `models:/model_name/version`) or file path (e.g., `/path/to/model.pt`)
+- `type`: Model framework, currently only `"pytorch"` is supported
+- `stored_in`: Where the model is stored - `"mlflow"` (default) or `"file"`
+- `window_size`: Expected input signal length
+- `dataset_name`: Dataset the model was trained on (`"CWRU"` or `"PU"`)
+- `task`: Model task, currently only `"classification"` is suppor.
 
 ### 4. Start MLflow Server
 
@@ -265,9 +296,14 @@ If you get `401 Unauthorized` or `403 Forbidden`:
 
 If models fail to load:
 
-- Ensure MLflow server is running
-- Check that model paths in `model_serve_config.json` are correct
-- Verify models are registered in MLflow
+- **For MLflow models** (`stored_in: "mlflow"`):
+  - Ensure MLflow server is running
+  - Check that model paths in `model_serve_config.json` are correct
+  - Verify models are registered in MLflow
+- **For file-based models** (`stored_in: "file"`):
+  - Verify the file path exists and is accessible
+  - Ensure the file is a valid PyTorch model saved with `torch.save()`
+  - Check file permissions
 
 ### Input Shape Errors
 
