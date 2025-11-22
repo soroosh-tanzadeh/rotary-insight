@@ -6,11 +6,11 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
 import numpy as np
 import uuid
-import cv2
 import torch
 import os
 from server.dto import FFTRequest, FFTResponse, STFTRequest, STFTResponse
 from server.auth import get_auth_handler
+import torchvision.transforms as transforms
 
 router = APIRouter(
     prefix="/processing",
@@ -79,61 +79,54 @@ async def perform_fft(request: FFTRequest):
     dependencies=[Depends(get_auth_handler().verify_api_key)],
 )
 async def perform_stft(req: STFTRequest, background_tasks: BackgroundTasks):
-    try:
-        signal = torch.tensor(req.signal, dtype=torch.float32).unsqueeze(0)  # [1, N]
-
-        n_fft = req.n_fft
-        hop_length = req.hop_length or n_fft // 4
-        win_length = req.win_length or n_fft
-
-        # Check that n_fft does not exceed the signal length
-        if n_fft > signal.shape[1]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"n_fft ({n_fft}) must be less than or equal to signal length ({signal.shape[1]})"
-            )
-
-        x = torch.stft(
-            signal,
-            n_fft=n_fft,
-            hop_length=hop_length,
-            win_length=win_length,
-            center=False,
-            return_complex=True,
+    signal = torch.tensor(req.signal, dtype=torch.float32).unsqueeze(0)  # [1, N]
+    n_fft = req.n_fft
+    hop_length = req.hop_length or n_fft // 4
+    win_length = req.win_length or n_fft
+    # Check that n_fft does not exceed the signal length
+    if n_fft > signal.shape[1]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"n_fft ({n_fft}) must be less than or equal to signal length ({signal.shape[1]})"
         )
+    x = torch.stft(
+        signal,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        win_length=win_length,
+        center=True,
+        return_complex=True,
+    )
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
 
-        spectrogram = torch.abs(x)  # [1, freq, time]
+    spectrogram = torch.abs(x).squeeze(0) 
 
-        spectrogram = torch.nn.functional.interpolate(
-            spectrogram.unsqueeze(1),  # [B, C=1, F, T]
-            size=(512, 512),
-            mode="bilinear",
-            align_corners=False,
-        ).squeeze(1)  # back to [B, 512, 512]
+    spectrogram_np = spectrogram.cpu().numpy()
+    
+    spectrogram_db = 10 * np.log10(spectrogram_np + 1e-6) # Add small epsilon to avoid log(0)
+    
+    min_val = spectrogram_db.min()
+    max_val = spectrogram_db.max()
+    norm_spectrogram = (spectrogram_db - min_val) / (max_val - min_val) if (max_val - min_val) > 0 else np.zeros_like(spectrogram_db)
+    
+    cmap = cm.get_cmap('viridis')
+    colored_spectrogram_np = (cmap(norm_spectrogram)[:, :, :3] * 255).astype(np.uint8)
 
-        tensor = spectrogram[0].cpu().numpy()
+    spectrogram_pil = transforms.ToPILImage()(colored_spectrogram_np)
+    
+    spectrogram = transforms.Resize((256, 1024))(spectrogram_pil)
 
-        # Normalize to 0-255 uint8
-        tensor = tensor / (tensor.max() + 1e-8)
-        tensor = (tensor * 255).astype(np.uint8)
-
-        # Temp folder next to the current file
-        temp_dir = os.path.join(os.path.dirname(__file__), "temp")
-        os.makedirs(temp_dir, exist_ok=True)
-
-        file_name = f"spectrogram_{uuid.uuid4().hex}.png"
-        file_path = os.path.join(temp_dir, file_name)
-
-        cv2.imwrite(file_path, tensor)
-
-        # remove file after sent it
-        background_tasks.add_task(os.remove, file_path)
-
-        return FileResponse(
-            path=file_path,
-            filename=file_name,
-            media_type="image/png",
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"STFT computation failed: {e}")
+    temp_dir = os.path.join(os.path.dirname(__file__), "temp")
+    os.makedirs(temp_dir, exist_ok=True)
+    file_name = f"spectrogram_{uuid.uuid4().hex}.png"
+    file_path = os.path.join(temp_dir, file_name)
+    
+    spectrogram.save(file_path)
+    background_tasks.add_task(os.remove, file_path)
+    return FileResponse(
+        path=file_path,
+        filename=file_name,
+        media_type="image/png",
+    )
+    
