@@ -2,9 +2,13 @@
 Signal processing endpoints (FFT, etc.).
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi.responses import FileResponse
 import numpy as np
+import uuid
+import cv2
 import torch
+import os
 from server.dto import FFTRequest, FFTResponse, STFTRequest, STFTResponse
 from server.auth import get_auth_handler
 
@@ -74,49 +78,62 @@ async def perform_fft(request: FFTRequest):
     response_model=STFTResponse,
     dependencies=[Depends(get_auth_handler().verify_api_key)],
 )
-async def perform_stft(request: STFTRequest):
+async def perform_stft(req: STFTRequest, background_tasks: BackgroundTasks):
     try:
-        # Tensor conversion
-        signal = torch.tensor(request.signal, dtype=torch.float32)
+        signal = torch.tensor(req.signal, dtype=torch.float32).unsqueeze(0)  # [1, N]
 
-        n_fft = request.n_fft
-        hop_length = request.hop_length or n_fft // 4
-        win_length = request.win_length or n_fft
+        n_fft = req.n_fft
+        hop_length = req.hop_length or n_fft // 4
+        win_length = req.win_length or n_fft
 
-        # ---- IMPORTANT: padding ----
-        if len(signal) < win_length:
-            pad_amount = win_length - len(signal)
-            signal = torch.nn.functional.pad(signal, (0, pad_amount))
+        # Check that n_fft does not exceed the signal length
+        if n_fft > signal.shape[1]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"n_fft ({n_fft}) must be less than or equal to signal length ({signal.shape[1]})"
+            )
 
-        # Hann window
-        window = torch.hann_window(win_length)
-
-        # STFT
-        stft_complex = torch.stft(
+        x = torch.stft(
             signal,
             n_fft=n_fft,
             hop_length=hop_length,
             win_length=win_length,
-            window=window,
-            center=True,
+            center=False,
             return_complex=True,
-            pad_mode="constant"
         )
 
-        magnitude = stft_complex.abs()
+        spectrogram = torch.abs(x)  # [1, freq, time]
 
-        # Axes
-        frequencies = torch.linspace(0, 0.5, magnitude.size(0)).tolist()
-        times = torch.arange(magnitude.size(1)).tolist()
+        spectrogram = torch.nn.functional.interpolate(
+            spectrogram.unsqueeze(1),  # [B, C=1, F, T]
+            size=(512, 512),
+            mode="bilinear",
+            align_corners=False,
+        ).squeeze(1)  # back to [B, 512, 512]
 
-        return STFTResponse(
-            stft=magnitude.cpu().numpy().tolist(),
-            frequencies=frequencies,
-            times=times
+        tensor = spectrogram[0].cpu().numpy()
+
+        # Normalize to 0-255 uint8
+        tensor = tensor / (tensor.max() + 1e-8)
+        tensor = (tensor * 255).astype(np.uint8)
+
+        # Temp folder next to the current file
+        temp_dir = os.path.join(os.path.dirname(__file__), "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+
+        file_name = f"spectrogram_{uuid.uuid4().hex}.png"
+        file_path = os.path.join(temp_dir, file_name)
+
+        cv2.imwrite(file_path, tensor)
+
+        # remove file after sent it
+        background_tasks.add_task(os.remove, file_path)
+
+        return FileResponse(
+            path=file_path,
+            filename=file_name,
+            media_type="image/png",
         )
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"STFT (Torch) computation failed: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=f"STFT computation failed: {e}")

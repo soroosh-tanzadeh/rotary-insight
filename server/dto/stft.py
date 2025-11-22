@@ -12,6 +12,6 @@ class STFTRequest(BaseModel):
     win_length: Optional[int] = None
 
 class STFTResponse(BaseModel):
-    stft: List[List[float]]  # Magnitude spectrogram
-    frequencies: List[float]
-    times: List[float]
+    file_name: str
+    file_type: str = "image/png"
+    image_base64: str
