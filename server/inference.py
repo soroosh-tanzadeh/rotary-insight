@@ -101,21 +101,31 @@ class ModelManager:
 
         config = self.configs[model_name]
         model_path = config["path"]
+        stored_in = config.get("stored_in", "mlflow")  # Default to mlflow for backward compatibility
 
-        print(f"Loading model '{model_name}' from '{model_path}'...")
+        print(f"Loading model '{model_name}' from '{model_path}' (stored_in: {stored_in})...")
 
         try:
-            # Load model from MLflow
             if config["type"] == "pytorch":
-                model = mlflow.pytorch.load_model(model_path)
-                model.eval()  # Set to evaluation mode
-
-                # Move to CPU (or GPU if available)
+                # Determine device
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                model = model.to(device)
+                
+                # Load model based on storage type
+                if stored_in == "file":
+                    # Load model from local file
+                    model = torch.load(model_path, map_location=device)
+                    model.eval()  # Set to evaluation mode
+                    print(f"Successfully loaded model '{model_name}' from file on {device}")
+                elif stored_in == "mlflow":
+                    # Load model from MLflow
+                    model = mlflow.pytorch.load_model(model_path)
+                    model.eval()  # Set to evaluation mode
+                    model = model.to(device)
+                    print(f"Successfully loaded model '{model_name}' from MLflow on {device}")
+                else:
+                    raise ValueError(f"Unsupported stored_in value: {stored_in}. Must be 'file' or 'mlflow'")
 
                 self.models[model_name] = model
-                print(f"Successfully loaded model '{model_name}' on {device}")
                 return model
             else:
                 raise ValueError(f"Unsupported model type: {config['type']}")
