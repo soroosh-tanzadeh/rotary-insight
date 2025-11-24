@@ -14,6 +14,7 @@ import {
 import { Line, Bar } from 'react-chartjs-2';
 import Papa from 'papaparse';
 import './App.css';
+import { STFTResult } from './STFTResult';
 
 ChartJS.register(
   CategoryScale,
@@ -33,6 +34,12 @@ interface Model {
   dataset_name: string;
   class_names: string[];
   description: string;
+}
+
+interface ExampleFile {
+  filename: string;
+  sample_index: number;
+  fault_name: string;
 }
 
 interface SignalStats {
@@ -74,6 +81,12 @@ const translations = {
     configuration: 'تنظیمات',
     selectModel: 'انتخاب مدل',
     windowSize: 'اندازه پنجره',
+    filterByWindowSize: 'فیلتر بر اساس اندازه پنجره',
+    allWindowSizes: 'همه اندازه‌ها',
+    sampleFiles: 'فایل‌های نمونه',
+    loadSample: 'بارگذاری نمونه',
+    orSelectSample: 'یا یک نمونه انتخاب کنید',
+    noSamplesAvailable: 'فایل نمونه‌ای موجود نیست',
     hopLength: 'Hop Length',
     parameters: 'پارامترها',
     uploadCsv: 'آپلود فایل CSV',
@@ -144,6 +157,12 @@ const translations = {
     configuration: 'Configuration',
     selectModel: 'Select Model',
     windowSize: 'Window Size',
+    filterByWindowSize: 'Filter by Window Size',
+    allWindowSizes: 'All Window Sizes',
+    sampleFiles: 'Sample Files',
+    loadSample: 'Load Sample',
+    orSelectSample: 'Or Select a Sample',
+    noSamplesAvailable: 'No sample files available',
     hopLength: 'Hop Length',
     parameters: 'Parameters',
     uploadCsv: 'Upload CSV File',
@@ -217,6 +236,7 @@ function App() {
   const [models, setModels] = useState<{ [key: string]: Model }>({});
   const [selectedModel, setSelectedModel] = useState('');
   const [windowSize, setWindowSize] = useState<number | ''>('');
+  const [windowSizeFilter, setWindowSizeFilter] = useState<number | 'all'>('all');
   const [hopLength, setHopLength] = useState<number | ''>('');
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [signalData, setSignalData] = useState<number[]>([]);
@@ -233,29 +253,32 @@ function App() {
   const [selectedDataset, setSelectedDataset] = useState<'PU' | 'CWRU'>('CWRU');
   const [classificationResults, setClassificationResults] = useState<any>(null);
   const [classificationLoading, setClassificationLoading] = useState(false);
+  const [stftLoading, setStftLoading] = useState(false);
+  const [exampleFiles, setExampleFiles] = useState<ExampleFile[]>([]);
+  const [loadingExamples, setLoadingExamples] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Set default API credentials
     const defaultApiUrl = 'https://rotary-insight.ir';
     const defaultApiKey = 'PzJo3KDcHdpcgLQ88qH6AYPsnNYXE58M';
-    
+
     // Always use default credentials
     setApiUrl(defaultApiUrl);
     setApiKey(defaultApiKey);
     setTempApiUrl(defaultApiUrl);
     setTempApiKey(defaultApiKey);
     setIsAuthenticated(true);
-    
+
     // Save to localStorage
     localStorage.setItem('apiUrl', defaultApiUrl);
     localStorage.setItem('apiKey', defaultApiKey);
     localStorage.setItem('isAuthenticated', 'true');
-    
+
     // Load saved preferences
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     const savedLanguage = localStorage.getItem('language') as 'fa' | 'en' | null;
-    
+
     if (savedDarkMode) setDarkMode(savedDarkMode);
     if (savedLanguage) setLanguage(savedLanguage);
   }, []);
@@ -281,6 +304,7 @@ function App() {
   useEffect(() => {
     if (isAuthenticated && apiUrl && apiKey) {
       loadModels();
+      loadExamples();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, apiUrl, apiKey]);
@@ -322,7 +346,7 @@ function App() {
 
     try {
       await validateApiCredentials(tempApiUrl.trim(), tempApiKey.trim(), language);
-      
+
       // Save credentials
       setApiUrl(tempApiUrl.trim());
       setApiKey(tempApiKey.trim());
@@ -371,19 +395,74 @@ function App() {
 
       const data = await response.json();
       const modelsWithDescriptions: { [key: string]: Model } = {};
-      
+
       Object.keys(data.models).forEach((key) => {
         modelsWithDescriptions[key] = {
           ...data.models[key],
-          description: language === 'fa' 
+          description: language === 'fa'
             ? (MODEL_DESCRIPTIONS[key] || MODEL_DESCRIPTIONS_EN[key] || translations[language].select)
             : (MODEL_DESCRIPTIONS_EN[key] || MODEL_DESCRIPTIONS[key] || translations[language].select),
         };
       });
-      
+
       setModels(modelsWithDescriptions);
     } catch (err: any) {
       setError(err.message || translations[language].failedLoadModels);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadExamples = async () => {
+    setLoadingExamples(true);
+    try {
+      const response = await fetch(`${apiUrl}/examples/`, {
+        headers: {
+          'X-API-Key': apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Failed to load examples');
+        setExampleFiles([]);
+        return;
+      }
+
+      const data = await response.json();
+      setExampleFiles(data.examples || []);
+    } catch (err: any) {
+      console.error('Error loading examples:', err);
+      setExampleFiles([]);
+    } finally {
+      setLoadingExamples(false);
+    }
+  };
+
+  const handleLoadExample = async (filename: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(`${apiUrl}/examples/${filename}`, {
+        headers: {
+          'X-API-Key': apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load example file');
+      }
+
+      const data = await response.json();
+
+      // Create a virtual file object
+      const blob = new Blob([data.signal.map((v: number) => `ch1\n${v}`).join('\n')], { type: 'text/csv' });
+      const file = new File([blob], filename, { type: 'text/csv' });
+
+      setCsvFile(file);
+      setIsCalculated(false);
+      setShowResults(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load example file');
     } finally {
       setLoading(false);
     }
@@ -393,6 +472,13 @@ function App() {
     setSelectedModel(modelName);
     setIsCalculated(false);
     setShowResults(false);
+
+    // Auto-set window size based on selected model
+    if (models[modelName]) {
+      const size = models[modelName].window_size;
+      setWindowSize(size);
+      setHopLength(Math.floor(size / 4));
+    }
   };
 
   const handleWindowSizeChange = (size: string) => {
@@ -421,21 +507,34 @@ function App() {
     }
   };
 
-  // Filter models based on selected window size
-  const filteredModels = Object.keys(models).filter((key) => {
-    return windowSize !== '' && models[key].window_size === windowSize;
+  // Filter models based on window size filter
+  const filteredModelKeys = Object.keys(models).filter((key) => {
+    if (windowSizeFilter === 'all') return true;
+    return models[key].window_size === windowSizeFilter;
   });
 
-  // Auto-select first model when models are loaded or window size changes
+  // Group filtered models by dataset
+  const modelsByDataset = filteredModelKeys.reduce((acc, key) => {
+    const dataset = models[key].dataset_name;
+    if (!acc[dataset]) {
+      acc[dataset] = [];
+    }
+    acc[dataset].push(key);
+    return acc;
+  }, {} as { [key: string]: string[] });
+
+  // Get unique window sizes from all models
+  const availableWindowSizes = Array.from(new Set(Object.keys(models).map(key => models[key].window_size))).sort((a, b) => a - b);
+
+  // Auto-select first model when models are loaded if none selected
   useEffect(() => {
-    if (filteredModels.length > 0) {
-      // If no model is selected or selected model doesn't match current window size
-      if (!selectedModel || !filteredModels.includes(selectedModel)) {
-        setSelectedModel(filteredModels[0]);
-      }
+    if (Object.keys(models).length > 0 && !selectedModel) {
+      // Optional: Auto-select the first available model
+      // const firstModel = Object.keys(models)[0];
+      // handleModelSelect(firstModel);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredModels.length, windowSize, Object.keys(models).length]);
+  }, [Object.keys(models).length]);
 
   const handleFileSelect = (file: File) => {
     if (!file.name.endsWith('.csv')) {
@@ -501,7 +600,7 @@ function App() {
       setError(translations[language].windowSizeError);
       return;
     }
-    
+
     setError('');
     parseCSV(csvFile);
   };
@@ -511,22 +610,22 @@ function App() {
       setClassificationLoading(false);
       return;
     }
-    
+
     // Use provided model or find model based on dataset and window size
     const currentWindowSize = typeof windowSize === 'number' ? windowSize : 512;
     let modelToUse = modelName || selectedModel;
-    
+
     // If no model provided/selected or model doesn't match dataset, find appropriate model
-    if (!modelToUse || (selectedDataset === 'PU' && models[modelToUse]?.dataset_name !== 'PU') || 
-        (selectedDataset === 'CWRU' && models[modelToUse]?.dataset_name !== 'CWRU')) {
+    if (!modelToUse || (selectedDataset === 'PU' && models[modelToUse]?.dataset_name !== 'PU') ||
+      (selectedDataset === 'CWRU' && models[modelToUse]?.dataset_name !== 'CWRU')) {
       // Find model matching dataset and window size
       const matchingModels = Object.keys(models).filter((key) => {
         const model = models[key];
-        return model.window_size === currentWindowSize && 
-               ((selectedDataset === 'PU' && model.dataset_name === 'PU') ||
-                (selectedDataset === 'CWRU' && model.dataset_name === 'CWRU'));
+        return model.window_size === currentWindowSize &&
+          ((selectedDataset === 'PU' && model.dataset_name === 'PU') ||
+            (selectedDataset === 'CWRU' && model.dataset_name === 'CWRU'));
       });
-      
+
       if (matchingModels.length > 0) {
         modelToUse = matchingModels[0];
       } else {
@@ -542,17 +641,17 @@ function App() {
         }
       }
     }
-    
+
     if (!modelToUse) {
       setClassificationLoading(false);
       return;
     }
-    
+
     setClassificationLoading(true);
     try {
       // Prepare window data - pad if necessary
       let windowData: number[] = [];
-      
+
       if (data.length >= currentWindowSize) {
         // Use first window if data is long enough
         windowData = data.slice(0, currentWindowSize);
@@ -563,7 +662,7 @@ function App() {
           windowData.push(0);
         }
       }
-      
+
       if (windowData.length === 0) {
         setClassificationLoading(false);
         setError('No data available for classification');
@@ -590,7 +689,7 @@ function App() {
       }
 
       const result = await response.json();
-      
+
       if (!result || (!result.predictions && !result.prediction && !result.probabilities)) {
         setError('Invalid response from API');
         setClassificationResults(null);
@@ -609,7 +708,7 @@ function App() {
     setSelectedDataset(dataset);
     setClassificationResults(null);
     setError('');
-    
+
     if (signalData.length > 0 && windowSize && typeof windowSize === 'number') {
       // Load classification results - it will automatically find the right model
       await loadClassificationResults(signalData);
@@ -623,23 +722,23 @@ function App() {
     const mean = data.reduce((a, b) => a + b, 0) / data.length;
     const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
     const std = Math.sqrt(variance);
-    
+
     const minIndex = data.indexOf(min);
     const maxIndex = data.indexOf(max);
 
     // Calculate additional statistics
     const range = max - min;
     const peakToPeak = range;
-    
+
     // RMS (Root Mean Square)
     const rms = Math.sqrt(data.reduce((sum, val) => sum + val * val, 0) / data.length);
-    
+
     // Median
     const sortedData = [...data].sort((a, b) => a - b);
     const median = sortedData.length % 2 === 0
       ? (sortedData[sortedData.length / 2 - 1] + sortedData[sortedData.length / 2]) / 2
       : sortedData[Math.floor(sortedData.length / 2)];
-    
+
     // Zero Crossings
     let zeroCrossings = 0;
     for (let i = 1; i < data.length; i++) {
@@ -647,10 +746,10 @@ function App() {
         zeroCrossings++;
       }
     }
-    
+
     // Energy (sum of squares)
     const energy = data.reduce((sum, val) => sum + val * val, 0);
-    
+
     // Crest Factor (peak / RMS)
     const peak = Math.max(Math.abs(max), Math.abs(min));
     const crestFactor = rms > 0 ? peak / rms : 0;
@@ -705,14 +804,29 @@ function App() {
     }
   };
 
-  const computeSTFT = async (data: number[]) => {
+  const handleHopLengthChange = (value: number | '') => {
+    setHopLength(value);
+    // Do NOT automatically re-compute STFT. User must click "Recalculate".
+  };
+
+  const handleRecalculateSTFT = () => {
+    if (signalData.length > 0) {
+      computeSTFT(signalData);
+    }
+  };
+
+  const computeSTFT = async (data: number[], customHopLength?: number | '') => {
     try {
       if (windowSize === '' || !windowSize) {
         return;
       }
 
+      setStftLoading(true);
+
       const currentWindowSize = typeof windowSize === 'number' ? windowSize : 512;
-      const currentHopLength = (hopLength !== '' && typeof hopLength === 'number') ? hopLength : Math.floor(currentWindowSize / 4);
+      // Use custom hop length if provided, otherwise use state
+      const hopLenToUse = customHopLength !== undefined ? customHopLength : hopLength;
+      const currentHopLength = (hopLenToUse !== '' && typeof hopLenToUse === 'number') ? hopLenToUse : Math.floor(currentWindowSize / 4);
       const currentNfft = currentWindowSize;
 
       // Pad signal if necessary - signal must be at least n_fft length
@@ -742,7 +856,7 @@ function App() {
 
       // Check content type - API returns image/png directly
       const contentType = response.headers.get('content-type') || '';
-      
+
       if (contentType.includes('application/json')) {
         // If JSON response (with base64 image)
         const result = await response.json();
@@ -769,6 +883,8 @@ function App() {
     } catch (err: any) {
       console.error('STFT error:', err);
       // Don't set error state for STFT, just log it
+    } finally {
+      setStftLoading(false);
     }
   };
 
@@ -881,14 +997,14 @@ function App() {
                   title={translations[language].back}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
                   </svg>
                 </button>
               </div>
               <div className="flex items-center justify-center gap-3 flex-1">
-                <img 
-                  src="/logo.png" 
-                  alt="Rotary Insight Logo" 
+                <img
+                  src="/logo.png"
+                  alt="Rotary Insight Logo"
                   className="h-16 w-16 object-contain"
                 />
                 <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
@@ -963,113 +1079,7 @@ function App() {
             </div>
           </div>
 
-          {/* Signal Statistics */}
-          {signalStats && (
-            <section className={`mb-8 p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-              <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
-                {translations[language].signalInfo}
-              </h2>
-              
-              {/* Basic Statistics */}
-              <h3 className={`text-xl font-semibold mb-3 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
-                {translations[language].basicStats}
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].min}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.min.toFixed(4)}
-                  </p>
-                  <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-600'}`}>
-                    Index: {signalStats.extrema.min.index}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].max}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.max.toFixed(4)}
-                  </p>
-                  <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-600'}`}>
-                    Index: {signalStats.extrema.max.index}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].mean}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.mean.toFixed(4)}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].median}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.median.toFixed(4)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Spread Statistics */}
-              <h3 className={`text-xl font-semibold mb-3 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
-                {translations[language].spreadStats}
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].stdDev}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.std.toFixed(4)}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].variance}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.variance.toFixed(4)}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].range}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.range.toFixed(4)}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].peakToPeak}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.peakToPeak.toFixed(4)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Advanced Statistics */}
-              <h3 className={`text-xl font-semibold mb-3 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
-                {translations[language].advancedStats}
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].rms}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.rms.toFixed(4)}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].energy}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.energy.toExponential(2)}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].crestFactor}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.crestFactor.toFixed(4)}
-                  </p>
-                </div>
-                <div className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{translations[language].zeroCrossings}</p>
-                  <p className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-primary'}`}>
-                    {signalStats.zeroCrossings}
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
+          {/* Signal Statistics Removed */}
 
           {/* Loading Modal */}
           {chartsLoading && (
@@ -1095,30 +1105,8 @@ function App() {
               <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
                 {translations[language].classificationResults}
               </h2>
-              
-              {/* Dataset Selection Buttons */}
-              <div className="flex justify-center gap-4 mb-6">
-                <button
-                  onClick={() => handleDatasetChange('CWRU')}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-                    selectedDataset === 'CWRU'
-                      ? darkMode ? 'bg-primary text-white' : 'bg-primary text-white'
-                      : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                  }`}
-                >
-                  {translations[language].cwruDataset}
-                </button>
-                <button
-                  onClick={() => handleDatasetChange('PU')}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-                    selectedDataset === 'PU'
-                      ? darkMode ? 'bg-primary text-white' : 'bg-primary text-white'
-                      : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                  }`}
-                >
-                  {translations[language].puDataset}
-                </button>
-              </div>
+
+              {/* Dataset Selection Buttons Removed */}
 
               {/* Classification Results */}
               {classificationLoading ? (
@@ -1139,7 +1127,7 @@ function App() {
                     const predictions = classificationResults.predictions || classificationResults.prediction || classificationResults;
                     const prediction = Array.isArray(predictions) ? predictions[0] : predictions;
                     const probabilities = prediction?.probabilities || prediction?.probs || prediction?.prob || [];
-                    
+
                     if (!prediction || probabilities.length === 0) {
                       return (
                         <div className="text-center py-8">
@@ -1152,84 +1140,84 @@ function App() {
                         </div>
                       );
                     }
-                  
-                  // Get model info from classification result or selected model
-                  let modelInfo = models[selectedModel];
-                  if (!modelInfo && classificationResults.model_name) {
-                    modelInfo = models[classificationResults.model_name];
-                  }
-                  // Also try to find model by dataset
-                  if (!modelInfo && windowSize && typeof windowSize === 'number') {
-                    const matchingModels = Object.keys(models).filter((key) => {
-                      const model = models[key];
-                      return model.window_size === windowSize && 
-                             ((selectedDataset === 'PU' && model.dataset_name === 'PU') ||
-                              (selectedDataset === 'CWRU' && model.dataset_name === 'CWRU'));
-                    });
-                    if (matchingModels.length > 0) {
-                      modelInfo = models[matchingModels[0]];
+
+                    // Get model info from classification result or selected model
+                    let modelInfo = models[selectedModel];
+                    if (!modelInfo && classificationResults.model_name) {
+                      modelInfo = models[classificationResults.model_name];
                     }
-                  }
-                  const classNames = modelInfo?.class_names || [];
-                  
-                  if (probabilities.length === 0 || classNames.length === 0) {
-                    return (
-                      <div className="text-center py-8">
-                        <p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                          No classification data available.
-                        </p>
-                        <p className={`text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Probabilities: {probabilities.length}, ClassNames: {classNames.length}
-                        </p>
-                        <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Model: {selectedModel || 'None'}, Dataset: {selectedDataset}
-                        </p>
-                      </div>
-                    );
-                  }
-                    
-                  const maxProb = Math.max(...probabilities);
-                  const maxIndex = probabilities.indexOf(maxProb);
-                  
-                  // Helper function to format class name for display
-                  const formatClassName = (className: string) => {
-                    // Convert API format to display format
-                    // Examples: "0.007-OuterRace" -> "Outer Ring 0.007"
-                    //           "0.014-Ball" -> "Ball Fault 0.014"
-                    //           "Normal" -> "Normal"
-                    
-                    if (className === 'Normal') {
-                      return 'Normal';
-                    }
-                    
-                    // Match pattern: "0.XXX-Type" or "Type-0.XXX"
-                    const match = className.match(/(\d+\.\d+)-?(\w+)/);
-                    if (match) {
-                      const severity = match[1]; // e.g., "0.007"
-                      const faultType = match[2]; // e.g., "OuterRace", "Ball", "InnerRace"
-                      
-                      let displayType = '';
-                      if (faultType === 'OuterRace') {
-                        displayType = 'Outer Ring';
-                      } else if (faultType === 'InnerRace') {
-                        displayType = 'Inner Ring';
-                      } else if (faultType === 'Ball') {
-                        displayType = 'Ball Fault';
-                      } else {
-                        displayType = faultType;
+                    // Also try to find model by dataset
+                    if (!modelInfo && windowSize && typeof windowSize === 'number') {
+                      const matchingModels = Object.keys(models).filter((key) => {
+                        const model = models[key];
+                        return model.window_size === windowSize &&
+                          ((selectedDataset === 'PU' && model.dataset_name === 'PU') ||
+                            (selectedDataset === 'CWRU' && model.dataset_name === 'CWRU'));
+                      });
+                      if (matchingModels.length > 0) {
+                        modelInfo = models[matchingModels[0]];
                       }
-                      
-                      return `${displayType} ${severity}`;
                     }
-                    
-                    // If no match, return original
-                    return className;
-                  };
-                  
-                  // Helper function to get color based on class type and index
-                  const getBarColor = (className: string, idx: number, isMax: boolean) => {
+                    const classNames = modelInfo?.class_names || [];
+
+                    if (probabilities.length === 0 || classNames.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            No classification data available.
+                          </p>
+                          <p className={`text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Probabilities: {probabilities.length}, ClassNames: {classNames.length}
+                          </p>
+                          <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Model: {selectedModel || 'None'}, Dataset: {selectedDataset}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    const maxProb = Math.max(...probabilities);
+                    const maxIndex = probabilities.indexOf(maxProb);
+
+                    // Helper function to format class name for display
+                    const formatClassName = (className: string) => {
+                      // Convert API format to display format
+                      // Examples: "0.007-OuterRace" -> "Outer Ring 0.007"
+                      //           "0.014-Ball" -> "Ball Fault 0.014"
+                      //           "Normal" -> "Normal"
+
+                      if (className === 'Normal') {
+                        return 'Normal';
+                      }
+
+                      // Match pattern: "0.XXX-Type" or "Type-0.XXX"
+                      const match = className.match(/(\d+\.\d+)-?(\w+)/);
+                      if (match) {
+                        const severity = match[1]; // e.g., "0.007"
+                        const faultType = match[2]; // e.g., "OuterRace", "Ball", "InnerRace"
+
+                        let displayType = '';
+                        if (faultType === 'OuterRace') {
+                          displayType = 'Outer Ring';
+                        } else if (faultType === 'InnerRace') {
+                          displayType = 'Inner Ring';
+                        } else if (faultType === 'Ball') {
+                          displayType = 'Ball Fault';
+                        } else {
+                          displayType = faultType;
+                        }
+
+                        return `${displayType} ${severity}`;
+                      }
+
+                      // If no match, return original
+                      return className;
+                    };
+
+                    // Helper function to get color based on class type and index
+                    const getBarColor = (className: string, idx: number, isMax: boolean) => {
                       if (isMax) return 'bg-green-500';
-                      
+
                       // Color coding based on class type and severity
                       if (className.includes('OuterRace') || className.includes('Outer Ring')) {
                         // Outer Ring 0.007 (index 7) -> yellow, others -> blue
@@ -1247,20 +1235,20 @@ function App() {
                       // Normal
                       return 'bg-blue-500';
                     };
-                    
+
                     // For CWRU Dataset: Split into two panels (10 classes)
                     if (selectedDataset === 'CWRU' && classNames.length === 10) {
                       // Part 1: Outer Ring (indices 7, 8, 9) and Inner Ring (indices 4, 5)
                       // Part 2: Inner Ring (index 6), Ball Fault (indices 1, 2, 3), Normal (index 0)
                       const part1Indices = [7, 8, 9, 4, 5]; // Outer Ring 0.007, 0.014, 0.021, Inner Ring 0.007, 0.014
                       const part2Indices = [6, 1, 2, 3, 0]; // Inner Ring 0.021, Ball Fault 0.007, 0.014, 0.021, Normal
-                      
+
                       return (
                         <div>
                           <h3 className={`text-xl font-semibold mb-4 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
                             {translations[language].cwruDataset} - Fault Classification
                           </h3>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             {/* Part 2 */}
                             <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
@@ -1273,7 +1261,7 @@ function App() {
                                   const originalClassName = classNames[idx] || `Class ${idx}`;
                                   const className = formatClassName(originalClassName);
                                   const isMax = idx === maxIndex;
-                                  
+
                                   return (
                                     <div key={idx} className="flex items-center gap-3" dir="ltr">
                                       <div className="flex-1">
@@ -1297,7 +1285,7 @@ function App() {
                                 })}
                               </div>
                             </div>
-                            
+
                             {/* Part 1 */}
                             <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                               <h4 className={`text-lg font-semibold mb-3 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
@@ -1309,7 +1297,7 @@ function App() {
                                   const originalClassName = classNames[idx] || `Class ${idx}`;
                                   const className = formatClassName(originalClassName);
                                   const isMax = idx === maxIndex;
-                                  
+
                                   return (
                                     <div key={idx} className="flex items-center gap-3" dir="ltr">
                                       <div className="flex-1">
@@ -1334,7 +1322,7 @@ function App() {
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Predicted Class Summary */}
                           <div className={`mt-6 p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
                             <p className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
@@ -1343,21 +1331,21 @@ function App() {
                           </div>
                         </div>
                       );
-                  }
-                  
-                  // For PU Dataset or other datasets: Single panel
-                  return (
+                    }
+
+                    // For PU Dataset or other datasets: Single panel
+                    return (
                       <div>
                         <h3 className={`text-xl font-semibold mb-4 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
                           {selectedDataset === 'PU' ? translations[language].puDataset : translations[language].cwruDataset} - Fault Classification
                         </h3>
-                        
+
                         <div className="space-y-4">
                           {probabilities.map((prob: number, idx: number) => {
                             const isMax = idx === maxIndex;
                             const originalClassName = classNames[idx] || `Class ${idx}`;
                             const className = formatClassName(originalClassName);
-                            
+
                             return (
                               <div key={idx} className="flex items-center gap-4" dir="ltr">
                                 <div className="flex-1">
@@ -1379,7 +1367,7 @@ function App() {
                               </div>
                             );
                           })}
-                          
+
                           {/* Predicted Class Summary */}
                           <div className={`mt-6 p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
                             <p className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
@@ -1401,7 +1389,7 @@ function App() {
               <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
                 {translations[language].charts}
               </h2>
-              
+
               {/* Time Domain Signal */}
               <div className="mb-16">
                 <h3 className={`text-xl font-semibold mb-2 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} font-persian`}>
@@ -1425,56 +1413,17 @@ function App() {
               )}
 
               {/* Short-Time Fourier Transform (STFT) */}
-              {stftData && stftData.image_base64 && (
-                <div className="mb-16">
-                  <h3 className={`text-xl font-semibold mb-2 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} font-persian`}>
-                    {translations[language].stft}
-                  </h3>
-                  <div className="h-64 relative">
-                    <img
-                      src={`data:${stftData.file_type || 'image/png'};base64,${stftData.image_base64}`}
-                      alt="STFT Spectrogram"
-                      className="w-full h-full object-contain"
-                    />
-                    {/* Legend/Info Overlay */}
-                    <div className={`absolute top-2 right-2 ${darkMode ? 'bg-gray-800/90' : 'bg-white/90'} rounded-lg p-3 text-xs shadow-lg border ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
-                      <div className="space-y-1">
-                        <div className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                          {translations[language].parameters || 'Parameters'}
-                        </div>
-                        {windowSize && typeof windowSize === 'number' && (
-                          <div className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <span className="font-medium">{translations[language].windowSize}:</span> {windowSize}
-                          </div>
-                        )}
-                        {hopLength && typeof hopLength === 'number' && (
-                          <div className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <span className="font-medium">{translations[language].hopLength}:</span> {hopLength}
-                          </div>
-                        )}
-                        {windowSize && typeof windowSize === 'number' && (
-                          <div className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <span className="font-medium">N_FFT:</span> {windowSize}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {/* Axis Labels */}
-                    <div className={`absolute bottom-2 left-1/2 transform -translate-x-1/2 ${darkMode ? 'text-gray-300' : 'text-gray-700'} text-xs font-medium`}>
-                      Time →
-                    </div>
-                    <div className={`absolute left-2 top-1/2 transform -translate-y-1/2 -rotate-90 ${darkMode ? 'text-gray-300' : 'text-gray-700'} text-xs font-medium`}>
-                      Frequency →
-                    </div>
-                  </div>
-                  {/* Caption */}
-                  <div className={`mt-2 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    <p className="italic">
-                      {translations[language].stftDescription || 'Time-Frequency representation showing signal energy distribution'}
-                    </p>
-                  </div>
-                </div>
-              )}
+              <STFTResult
+                stftData={stftData}
+                windowSize={windowSize}
+                hopLength={hopLength}
+                onHopLengthChange={handleHopLengthChange}
+                onRecalculate={handleRecalculateSTFT}
+                isLoading={stftLoading}
+                darkMode={darkMode}
+                translations={translations}
+                language={language}
+              />
 
             </section>
           )}
@@ -1492,9 +1441,9 @@ function App() {
           <div className="flex items-center justify-between h-16">
             <div className="flex-1"></div>
             <div className="flex items-center justify-center gap-3 flex-1">
-              <img 
-                src="/logo.png" 
-                alt="Rotary Insight Logo" 
+              <img
+                src="/logo.png"
+                alt="Rotary Insight Logo"
                 className="h-16 w-16 object-contain"
               />
               <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
@@ -1558,80 +1507,91 @@ function App() {
           <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
             {translations[language].configuration}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {translations[language].windowSize}
-              </label>
-              <select
-                value={windowSize === '' ? '' : windowSize}
-                onChange={(e) => handleWindowSizeChange(e.target.value)}
-                className={`w-full px-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary`}
-              >
-                <option value="">{translations[language].select}</option>
-                <option value="512">512</option>
-                <option value="1024">1024</option>
-                <option value="2048">2048</option>
-              </select>
-            </div>
-            <div>
-              <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {translations[language].hopLength}
-              </label>
-              <input
-                type="number"
-                value={hopLength === '' ? '' : hopLength}
-                onChange={(e) => {
-                  const value = e.target.value === '' ? '' : parseInt(e.target.value);
-                  if (value === '' || (!isNaN(value as number) && value > 0)) {
-                    setHopLength(value);
-                    setIsCalculated(false);
-                    setShowResults(false);
-                  }
-                }}
-                min="1"
-                disabled={windowSize === '' || !windowSize}
-                className={`w-full px-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed`}
-                placeholder={windowSize && typeof windowSize === 'number' ? Math.floor(windowSize / 4).toString() : ''}
-              />
-              {windowSize && typeof windowSize === 'number' && (
-                <p className={`mt-1 text-xs text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  
-                </p>
-              )}
-            </div>
-            <div>
-              <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {translations[language].selectModel}
-              </label>
-              <select
-                value={selectedModel}
-                onChange={(e) => handleModelSelect(e.target.value)}
-                className={`w-full px-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary`}
-                disabled={Object.keys(models).length === 0 || filteredModels.length === 0 || windowSize === ''}
-              >
-                <option value="">
-                  {Object.keys(models).length === 0 
-                    ? translations[language].loadModelsFirst 
-                    : windowSize === ''
-                    ? translations[language].selectWindowSizeFirst
-                    : filteredModels.length === 0
-                    ? translations[language].select
-                    : translations[language].select}
-                </option>
-                {filteredModels.map((key) => (
-                  <option key={key} value={key}>
-                    {key}
-                  </option>
-                ))}
-              </select>
-              {selectedModel && models[selectedModel] && (
-                <p className={`mt-2 text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'} font-persian`}>
-                  {language === 'fa' ? MODEL_DESCRIPTIONS[selectedModel] || MODEL_DESCRIPTIONS_EN[selectedModel] : MODEL_DESCRIPTIONS_EN[selectedModel] || MODEL_DESCRIPTIONS[selectedModel]}
-                </p>
-              )}
-            </div>
+
+          {/* Window Size Filter */}
+          <div className="mb-6">
+            <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+              {translations[language].filterByWindowSize}
+            </label>
+            <select
+              value={windowSizeFilter}
+              onChange={(e) => setWindowSizeFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+              className={`w-full md:w-1/3 mx-auto px-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary`}
+            >
+              <option value="all">{translations[language].allWindowSizes}</option>
+              {availableWindowSizes.map(size => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
           </div>
+          {loading ? (
+            <div className="text-center mt-4">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+              <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} font-persian`}>
+                {translations[language].loading}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.keys(modelsByDataset).length === 0 ? (
+                <div className="text-center py-8">
+                  <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {translations[language].loadModelsFirst}
+                  </p>
+                </div>
+              ) : (
+                Object.keys(modelsByDataset).map((dataset) => (
+                  <div key={dataset} className="space-y-3">
+                    <h3 className={`text-lg font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} pb-2`}>
+                      {dataset === 'PU' ? translations[language].puDataset : dataset === 'CWRU' ? translations[language].cwruDataset : dataset}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {modelsByDataset[dataset].map((modelKey) => {
+                        const model = models[modelKey];
+                        const isSelected = selectedModel === modelKey;
+                        return (
+                          <div
+                            key={modelKey}
+                            onClick={() => handleModelSelect(modelKey)}
+                            className={`
+                              relative cursor-pointer rounded-xl border-2 p-4 transition-all duration-200
+                              ${isSelected
+                                ? (darkMode ? 'border-primary bg-primary/20' : 'border-primary bg-primary/10')
+                                : (darkMode ? 'border-gray-700 bg-gray-800 hover:border-gray-600' : 'border-gray-200 bg-white hover:border-gray-300')
+                              }
+                            `}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {modelKey}
+                              </h4>
+                              {isSelected && (
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
+                                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                                {translations[language].windowSize}: {model.window_size}
+                              </span>
+                            </div>
+
+                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} line-clamp-2`}>
+                              {model.description}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
           {loading && (
             <div className="text-center mt-4">
               <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} font-persian`}>
@@ -1651,24 +1611,23 @@ function App() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-300 ${
-              isDragging
-                ? darkMode
-                  ? 'border-primary bg-primary/20 scale-105 shadow-lg'
-                  : 'border-primary bg-primary/10 scale-105 shadow-lg'
-                : darkMode
+            className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-300 ${isDragging
+              ? darkMode
+                ? 'border-primary bg-primary/20 scale-105 shadow-lg'
+                : 'border-primary bg-primary/10 scale-105 shadow-lg'
+              : darkMode
                 ? 'border-gray-600 hover:border-primary hover:bg-gray-700/50'
                 : 'border-gray-300 hover:border-primary hover:bg-primary/5'
-            }`}
+              }`}
           >
             <div className="mb-6 flex justify-center">
-              <svg 
+              <svg
                 className={`w-20 h-20 ${isDragging ? 'scale-110' : ''} transition-transform duration-300`}
-                fill="none" 
-                stroke={darkMode ? '#E9E9E9' : '#385F8C'} 
+                fill="none"
+                stroke={darkMode ? '#E9E9E9' : '#385F8C'}
                 strokeWidth="2"
                 viewBox="0 0 24 24"
-                strokeLinecap="round" 
+                strokeLinecap="round"
                 strokeLinejoin="round"
               >
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -1706,6 +1665,66 @@ function App() {
               >
                 {translations[language].calculate}
               </button>
+            </div>
+          )}
+        </section>
+
+        {/* Sample Files Section */}
+        <section className={`mb-8 p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+          <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
+            {translations[language].orSelectSample}
+          </h2>
+          {loadingExamples ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+              <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} font-persian`}>
+                {translations[language].loading}
+              </p>
+            </div>
+          ) : exampleFiles.length === 0 ? (
+            <div className="text-center py-8">
+              <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                {translations[language].noSamplesAvailable}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {exampleFiles.map((example) => (
+                <div
+                  key={example.filename}
+                  onClick={() => handleLoadExample(example.filename)}
+                  className={`
+                    cursor-pointer rounded-xl border-2 p-4 transition-all duration-200
+                    ${csvFile?.name === example.filename
+                      ? (darkMode ? 'border-primary bg-primary/20' : 'border-primary bg-primary/10')
+                      : (darkMode ? 'border-gray-700 bg-gray-800 hover:border-gray-600' : 'border-gray-200 bg-white hover:border-gray-300')
+                    }
+                  `}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Sample {example.sample_index}
+                    </h4>
+                    {csvFile?.name === example.filename && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-xs px-2 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                      {example.fault_name.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {example.filename}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
         </section>
