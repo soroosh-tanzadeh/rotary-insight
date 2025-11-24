@@ -29,10 +29,10 @@ cp model_serve_config.example.json model_serve_config.json
 
 ```bash
 # Build the API image
-docker-compose build
+docker compose build
 
 # Start all services (MLflow + API)
-docker-compose up -d
+docker compose up -d
 ```
 
 This will start:
@@ -44,7 +44,7 @@ This will start:
 
 ```bash
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Check health
 curl http://localhost:8000/health
@@ -53,7 +53,7 @@ curl http://localhost:8000/health
 ### 4. Stop Services
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ## Manual Docker Deployment
@@ -98,24 +98,24 @@ docker run -d \
 
 ```bash
 # Start services
-docker-compose up -d
+docker compose up -d
 
 # Stop services
-docker-compose down
+docker compose down
 
 # View logs
-docker-compose logs -f api
-docker-compose logs -f mlflow
+docker compose logs -f api
+docker compose logs -f mlflow
 
 # Restart a service
-docker-compose restart api
+docker compose restart api
 
 # Rebuild after code changes
-docker-compose build api
-docker-compose up -d api
+docker compose build api
+docker compose up -d api
 
 # Scale API instances
-docker-compose up -d --scale api=3
+docker compose up -d --scale api=3
 ```
 
 ## Environment Variables
@@ -169,7 +169,7 @@ docker stack rm rotary
 
 ### Use Kubernetes
 
-Convert docker-compose to k8s manifests:
+Convert compose file to k8s manifests:
 
 ```bash
 # Install kompose
@@ -219,7 +219,7 @@ docker stats rotary-api rotary-mlflow
 
 ### Resource Limits
 
-Add to docker-compose.yml:
+Add to `docker-compose.yml`:
 
 ```yaml
 services:
@@ -239,10 +239,10 @@ services:
 View logs with timestamps:
 
 ```bash
-docker-compose logs -f --timestamps api
+docker compose logs -f --timestamps api
 ```
 
-Configure logging driver in docker-compose.yml:
+Configure logging driver in `docker-compose.yml`:
 
 ```yaml
 services:
@@ -270,7 +270,7 @@ tar -czf mlflow-backup-$(date +%Y%m%d).tar.gz data/ mlartifacts/
 tar -xzf mlflow-backup-YYYYMMDD.tar.gz
 
 # Restart services
-docker-compose restart mlflow
+docker compose restart mlflow
 ```
 
 ## Troubleshooting
@@ -289,7 +289,7 @@ docker exec rotary-api curl http://mlflow:5000/health
 Check logs:
 
 ```bash
-docker-compose logs api
+docker compose logs api
 ```
 
 Common issues:
@@ -328,42 +328,12 @@ docker inspect rotary-api | grep -A 10 Health
 docker inspect rotary-mlflow | grep -A 10 Health
 
 # Wait for healthy
-docker-compose up -d
+docker compose up -d
 until [ "$(docker inspect -f {{.State.Health.Status}} rotary-api)" == "healthy" ]; do
     echo "Waiting for API to be healthy..."
     sleep 2
 done
 echo "API is healthy!"
-```
-
-## CI/CD Integration
-
-### GitHub Actions Example
-
-```yaml
-name: Build and Deploy
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build image
-        run: docker-compose build
-
-      - name: Push to registry
-        run: |
-          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          docker-compose push
-
-      - name: Deploy
-        run: |
-          ssh user@server 'cd /app && docker-compose pull && docker-compose up -d'
 ```
 
 ## Security Best Practices

@@ -7,3 +7,6 @@ mlruns
 mlartifacts
 .env
 model_serve_config.json
+frontend/node_modules
+nginx/htpasswd
+nginx/ssl

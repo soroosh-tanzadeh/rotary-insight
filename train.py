@@ -10,7 +10,7 @@ from utils.display import (
     display_confusion_matrix_by_pred,
 )
 from torch.utils.data import random_split
-from preprocessings import AddNoise, StandardScaler, TrainAugmentation
+from datasets.preprocessings import AddNoise, TrainAugmentation
 from utils.validate import validate_model
 from utils.train import train, ensure_dir
 from utils.results import count_parameters
@@ -24,7 +24,7 @@ from datasets.dataset import SimpleBearingDataset
 
 DEBUG = False
 
-mlflow.autolog()
+mlflow.pytorch.autolog(log_models=False)
 
 
 def _save_and_visualize_history(history, name, images_path, history_path):

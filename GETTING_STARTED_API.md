@@ -54,23 +54,6 @@ Then start the API server:
 
 That's it! 🎉
 
-## ✅ Verify Setup
-
-Run the verification script to check everything is configured:
-
-```bash
-python verify_api_setup.py
-```
-
-This will check:
-
-- ✓ .env file exists and has API keys
-- ✓ model_serve_config.json is valid
-- ✓ All dependencies are installed
-- ✓ Server files are present
-- ✓ MLflow is accessible
-- ✓ Server can be imported
-
 ## 🌐 Access the API
 
 Once the server is running, open your browser:
@@ -202,14 +185,14 @@ print(f"Confidence: {result['predictions'][0]['confidence']:.2%}")
 If you prefer Docker:
 
 ```bash
-# Start both MLflow and API with docker-compose
-docker-compose up -d
+# Start both MLflow and API with docker compose
+docker compose up -d
 
 # Check logs
-docker-compose logs -f api
+docker compose logs -f api
 
 # Stop everything
-docker-compose down
+docker compose down
 ```
 
 ## 📚 Next Steps
@@ -317,15 +300,15 @@ Make sure you have these files:
 - [x] `server/` - All server files (auto-created)
 - [x] `requirements.txt` - Python dependencies (updated)
 - [x] `start_server.bash` - Server startup script
-- [x] `verify_api_setup.py` - Setup verification script
+
 
 ## 🆘 Need Help?
 
-1. **Run verification**: `python verify_api_setup.py`
-2. **Check logs**: Look at terminal output when starting server
-3. **Visit docs**: http://localhost:8000/docs
-4. **Read guides**: Check the documentation files
-5. **Test MLflow**: Visit http://localhost:5000
+1. **Check logs**: Look at terminal output when starting server
+2. **Visit docs**: http://localhost:8000/docs
+3. **Read guides**: Check the documentation files listed below
+4. **Test MLflow**: Visit http://localhost:5000
+5. **Review setup**: Follow troubleshooting section above
 
 ## 🎉 Success!
 
@@ -351,4 +334,5 @@ Visit http://localhost:8000/docs and start using your API! 🚀
 - 📖 [API Documentation](http://localhost:8000/docs)
 - 🏥 [Health Check](http://localhost:8000/health)
 - 📊 [MLflow UI](http://localhost:5000)
-- 📚 [Complete Guides](API_SUMMARY.md)
+- 📚 [Quick Reference](API_QUICKSTART.md)
+- 📚 [Server Documentation](server/README.md)

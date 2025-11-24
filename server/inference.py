@@ -101,21 +101,31 @@ class ModelManager:
 
         config = self.configs[model_name]
         model_path = config["path"]
+        stored_in = config.get("stored_in", "mlflow")  # Default to mlflow for backward compatibility
 
-        print(f"Loading model '{model_name}' from '{model_path}'...")
+        print(f"Loading model '{model_name}' from '{model_path}' (stored_in: {stored_in})...")
 
         try:
-            # Load model from MLflow
             if config["type"] == "pytorch":
-                model = mlflow.pytorch.load_model(model_path)
-                model.eval()  # Set to evaluation mode
-
-                # Move to CPU (or GPU if available)
+                # Determine device
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                model = model.to(device)
+                
+                # Load model based on storage type
+                if stored_in == "file":
+                    # Load model from local file
+                    model = torch.load(model_path, map_location=device)
+                    model.eval()  # Set to evaluation mode
+                    print(f"Successfully loaded model '{model_name}' from file on {device}")
+                elif stored_in == "mlflow":
+                    # Load model from MLflow
+                    model = mlflow.pytorch.load_model(model_path)
+                    model.eval()  # Set to evaluation mode
+                    model = model.to(device)
+                    print(f"Successfully loaded model '{model_name}' from MLflow on {device}")
+                else:
+                    raise ValueError(f"Unsupported stored_in value: {stored_in}. Must be 'file' or 'mlflow'")
 
                 self.models[model_name] = model
-                print(f"Successfully loaded model '{model_name}' on {device}")
                 return model
             else:
                 raise ValueError(f"Unsupported model type: {config['type']}")
@@ -226,19 +236,28 @@ class ModelManager:
 
         return predictions, probabilities
 
-    def list_models(self) -> Dict[str, dict]:
+    def list_models(self, window_size: Optional[int] = None) -> Dict[str, dict]:
         """
         List all available models with their configurations.
+
+        Args:
+            window_size: Optional filter by window size
 
         Returns:
             Dictionary mapping model names to their info
         """
         models_info = {}
         for name, config in self.configs.items():
+            model_window_size = config.get("window_size", 0)
+            
+            # Filter by window size if provided
+            if window_size is not None and model_window_size != window_size:
+                continue
+                
             models_info[name] = {
                 "name": name,
                 "type": config.get("type", "unknown"),
-                "window_size": config.get("window_size", 0),
+                "window_size": model_window_size,
                 "dataset_name": config.get("dataset_name", "unknown"),
                 "task": config.get("task", "unknown"),
                 "num_classes": len(self.get_class_names(name)),
@@ -246,6 +265,19 @@ class ModelManager:
                 "loaded": name in self.models,
             }
         return models_info
+
+    def get_available_window_sizes(self) -> List[int]:
+        """
+        Get a list of all available window sizes across all models.
+
+        Returns:
+            List of unique window sizes, sorted in ascending order.
+        """
+        window_sizes = set()
+        for config in self.configs.values():
+            if "window_size" in config:
+                window_sizes.add(config["window_size"])
+        return sorted(list(window_sizes))
 
     def is_loaded(self, model_name: str) -> bool:
         """Check if a model is loaded."""
