@@ -74,6 +74,8 @@ const translations = {
     configuration: 'تنظیمات',
     selectModel: 'انتخاب مدل',
     windowSize: 'اندازه پنجره',
+    hopLength: 'Hop Length',
+    parameters: 'پارامترها',
     uploadCsv: 'آپلود فایل CSV',
     dragDrop: 'فایل CSV را اینجا بکشید یا کلیک کنید',
     calculate: 'محاسبه',
@@ -84,14 +86,18 @@ const translations = {
     advancedStats: 'آمار پیشرفته',
     timeDomain: 'سیگنال حوزه زمان',
     frequencyDomain: 'حوزه فرکانس (FFT)',
+    stft: 'تبدیل فوریه کوتاه‌مدت (STFT)',
+    stftDescription: 'نمایش زمان-فرکانس سیگنال',
     heatMap: 'نقشه حرارتی',
     login: 'ورود',
     validating: 'در حال بررسی...',
     file: 'فایل',
     model: 'مدل',
     loading: 'در حال بارگذاری مدل‌ها...',
+    loadingCharts: 'در حال بارگیری اطلاعات',
     select: 'انتخاب کنید',
-    loadModelsFirst: 'ابتدا مدل‌ها را بارگذاری کنید',
+    loadModelsFirst: 'در حال بارگذاری مدل‌ها...',
+    selectWindowSizeFirst: 'ابتدا اندازه پنجره را وارد کنید',
     min: 'حداقل',
     max: 'حداکثر',
     mean: 'میانگین',
@@ -121,6 +127,12 @@ const translations = {
     failedLoadModels: 'خطا در بارگذاری مدل‌ها. لطفاً API URL و API Key را بررسی کنید.',
     invalidFileType: 'لطفاً یک فایل CSV انتخاب کنید',
     failedFft: 'خطا در محاسبه FFT: ',
+    classificationResults: 'نتایج طبقه‌بندی',
+    puDataset: 'PU Dataset',
+    cwruDataset: 'CWRU Dataset',
+    predictedClass: 'کلاس پیش‌بینی شده',
+    confidence: 'اطمینان',
+    loadingClassification: 'در حال بارگیری نتایج طبقه‌بندی...',
   },
   en: {
     title: 'Rotary Insight',
@@ -132,6 +144,8 @@ const translations = {
     configuration: 'Configuration',
     selectModel: 'Select Model',
     windowSize: 'Window Size',
+    hopLength: 'Hop Length',
+    parameters: 'Parameters',
     uploadCsv: 'Upload CSV File',
     dragDrop: 'Drag & drop your CSV file here or click to browse',
     calculate: 'Calculate',
@@ -142,14 +156,18 @@ const translations = {
     advancedStats: 'Advanced Statistics',
     timeDomain: 'Time Domain Signal',
     frequencyDomain: 'Frequency Domain (FFT)',
+    stft: 'Short-Time Fourier Transform (STFT)',
+    stftDescription: 'Time-Frequency representation of the signal',
     heatMap: 'Heat Map',
     login: 'Login',
     validating: 'Validating...',
     file: 'File',
     model: 'Model',
     loading: 'Loading models...',
+    loadingCharts: 'Loading data...',
     select: 'Select',
     loadModelsFirst: 'Load models first',
+    selectWindowSizeFirst: 'Please select window size first',
     min: 'Min',
     max: 'Max',
     mean: 'Mean',
@@ -179,54 +197,67 @@ const translations = {
     failedLoadModels: 'Failed to load models. Check your API URL and API Key.',
     invalidFileType: 'Please select a CSV file',
     failedFft: 'Failed to compute FFT: ',
+    classificationResults: 'Classification Results',
+    puDataset: 'PU Dataset',
+    cwruDataset: 'CWRU Dataset',
+    predictedClass: 'Predicted Class',
+    confidence: 'Confidence',
+    loadingClassification: 'Loading classification results...',
   },
 };
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState<'fa' | 'en'>('fa');
-  const [apiUrl, setApiUrl] = useState('http://localhost:8000');
-  const [apiKey, setApiKey] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [tempApiUrl, setTempApiUrl] = useState('http://localhost:8000');
-  const [tempApiKey, setTempApiKey] = useState('');
+  const [apiUrl, setApiUrl] = useState('https://rotary-insight.ir');
+  const [apiKey, setApiKey] = useState('PzJo3KDcHdpcgLQ88qH6AYPsnNYXE58M');
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [tempApiUrl, setTempApiUrl] = useState('https://rotary-insight.ir');
+  const [tempApiKey, setTempApiKey] = useState('PzJo3KDcHdpcgLQ88qH6AYPsnNYXE58M');
   const [models, setModels] = useState<{ [key: string]: Model }>({});
   const [selectedModel, setSelectedModel] = useState('');
-  const [windowSize, setWindowSize] = useState(512);
+  const [windowSize, setWindowSize] = useState<number | ''>('');
+  const [hopLength, setHopLength] = useState<number | ''>('');
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [signalData, setSignalData] = useState<number[]>([]);
   const [fftData, setFftData] = useState<{ frequencies: number[]; magnitudes: number[] } | null>(null);
+  const [stftData, setStftData] = useState<{ file_name: string; file_type?: string; image_base64: string } | null>(null);
   const [signalStats, setSignalStats] = useState<SignalStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const [heatMapData, setHeatMapData] = useState<number[][] | null>(null);
   const [validating, setValidating] = useState(false);
   const [isCalculated, setIsCalculated] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [chartsLoading, setChartsLoading] = useState(false);
+  const [selectedDataset, setSelectedDataset] = useState<'PU' | 'CWRU'>('CWRU');
+  const [classificationResults, setClassificationResults] = useState<any>(null);
+  const [classificationLoading, setClassificationLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Load saved config from localStorage
-    const savedApiUrl = localStorage.getItem('apiUrl');
-    const savedApiKey = localStorage.getItem('apiKey');
+    // Set default API credentials
+    const defaultApiUrl = 'https://rotary-insight.ir';
+    const defaultApiKey = 'PzJo3KDcHdpcgLQ88qH6AYPsnNYXE58M';
+    
+    // Always use default credentials
+    setApiUrl(defaultApiUrl);
+    setApiKey(defaultApiKey);
+    setTempApiUrl(defaultApiUrl);
+    setTempApiKey(defaultApiKey);
+    setIsAuthenticated(true);
+    
+    // Save to localStorage
+    localStorage.setItem('apiUrl', defaultApiUrl);
+    localStorage.setItem('apiKey', defaultApiKey);
+    localStorage.setItem('isAuthenticated', 'true');
+    
+    // Load saved preferences
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    const savedAuth = localStorage.getItem('isAuthenticated') === 'true';
     const savedLanguage = localStorage.getItem('language') as 'fa' | 'en' | null;
     
-    if (savedApiUrl) {
-      setApiUrl(savedApiUrl);
-      setTempApiUrl(savedApiUrl);
-    }
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-      setTempApiKey(savedApiKey);
-    }
     if (savedDarkMode) setDarkMode(savedDarkMode);
     if (savedLanguage) setLanguage(savedLanguage);
-    if (savedAuth && savedApiUrl && savedApiKey) {
-      setIsAuthenticated(true);
-    }
   }, []);
 
   useEffect(() => {
@@ -320,8 +351,8 @@ function App() {
     setCsvFile(null);
     setSignalData([]);
     setFftData(null);
+    setStftData(null);
     setSignalStats(null);
-    setHeatMapData(null);
   };
 
   const loadModels = async () => {
@@ -360,12 +391,51 @@ function App() {
 
   const handleModelSelect = (modelName: string) => {
     setSelectedModel(modelName);
-    if (models[modelName]) {
-      setWindowSize(models[modelName].window_size);
-    }
     setIsCalculated(false);
     setShowResults(false);
   };
+
+  const handleWindowSizeChange = (size: string) => {
+    const sizeValue = size === '' ? '' : parseInt(size);
+    setWindowSize(sizeValue);
+    setIsCalculated(false);
+    setShowResults(false);
+    // Set hop_length to 1/4 of window size by default
+    if (sizeValue !== '') {
+      setHopLength(Math.floor(sizeValue / 4));
+    } else {
+      setHopLength('');
+    }
+    // Auto-select first model with matching window size
+    if (sizeValue !== '') {
+      const matchingModels = Object.keys(models).filter((key) => {
+        return models[key].window_size === sizeValue;
+      });
+      if (matchingModels.length > 0) {
+        setSelectedModel(matchingModels[0]);
+      } else {
+        setSelectedModel('');
+      }
+    } else {
+      setSelectedModel('');
+    }
+  };
+
+  // Filter models based on selected window size
+  const filteredModels = Object.keys(models).filter((key) => {
+    return windowSize !== '' && models[key].window_size === windowSize;
+  });
+
+  // Auto-select first model when models are loaded or window size changes
+  useEffect(() => {
+    if (filteredModels.length > 0) {
+      // If no model is selected or selected model doesn't match current window size
+      if (!selectedModel || !filteredModels.includes(selectedModel)) {
+        setSelectedModel(filteredModels[0]);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredModels.length, windowSize, Object.keys(models).length]);
 
   const handleFileSelect = (file: File) => {
     if (!file.name.endsWith('.csv')) {
@@ -380,6 +450,7 @@ function App() {
   };
 
   const parseCSV = (file: File) => {
+    setChartsLoading(true);
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -394,18 +465,25 @@ function App() {
 
         if (data.length === 0) {
           setError(translations[language].noValidData);
+          setChartsLoading(false);
           return;
         }
 
         setSignalData(data);
         calculateStats(data);
         computeFFT(data);
+        computeSTFT(data);
         setIsCalculated(true);
         setShowResults(true);
         setError('');
+        // Load classification results with current selected model
+        if (selectedModel) {
+          loadClassificationResults(data, selectedModel);
+        }
       },
       error: (error) => {
         setError(translations[language].failedParseCsv + error.message);
+        setChartsLoading(false);
       },
     });
   };
@@ -419,13 +497,123 @@ function App() {
       setError(translations[language].uploadFileError);
       return;
     }
-    if (windowSize <= 0) {
+    if (!windowSize || windowSize <= 0) {
       setError(translations[language].windowSizeError);
       return;
     }
     
     setError('');
     parseCSV(csvFile);
+  };
+
+  const loadClassificationResults = async (data: number[], modelName?: string) => {
+    if (!windowSize || (typeof windowSize === 'string' && windowSize === '')) {
+      setClassificationLoading(false);
+      return;
+    }
+    
+    // Use provided model or find model based on dataset and window size
+    const currentWindowSize = typeof windowSize === 'number' ? windowSize : 512;
+    let modelToUse = modelName || selectedModel;
+    
+    // If no model provided/selected or model doesn't match dataset, find appropriate model
+    if (!modelToUse || (selectedDataset === 'PU' && models[modelToUse]?.dataset_name !== 'PU') || 
+        (selectedDataset === 'CWRU' && models[modelToUse]?.dataset_name !== 'CWRU')) {
+      // Find model matching dataset and window size
+      const matchingModels = Object.keys(models).filter((key) => {
+        const model = models[key];
+        return model.window_size === currentWindowSize && 
+               ((selectedDataset === 'PU' && model.dataset_name === 'PU') ||
+                (selectedDataset === 'CWRU' && model.dataset_name === 'CWRU'));
+      });
+      
+      if (matchingModels.length > 0) {
+        modelToUse = matchingModels[0];
+      } else {
+        // Fallback: use any model with matching window size
+        const fallbackModels = Object.keys(models).filter((key) => {
+          return models[key].window_size === currentWindowSize;
+        });
+        if (fallbackModels.length > 0) {
+          modelToUse = fallbackModels[0];
+        } else {
+          setClassificationLoading(false);
+          return;
+        }
+      }
+    }
+    
+    if (!modelToUse) {
+      setClassificationLoading(false);
+      return;
+    }
+    
+    setClassificationLoading(true);
+    try {
+      // Prepare window data - pad if necessary
+      let windowData: number[] = [];
+      
+      if (data.length >= currentWindowSize) {
+        // Use first window if data is long enough
+        windowData = data.slice(0, currentWindowSize);
+      } else {
+        // Pad data with zeros if it's shorter than window size
+        windowData = [...data];
+        while (windowData.length < currentWindowSize) {
+          windowData.push(0);
+        }
+      }
+      
+      if (windowData.length === 0) {
+        setClassificationLoading(false);
+        setError('No data available for classification');
+        return;
+      }
+
+      // Use the window data for classification
+      const response = await fetch(`${apiUrl}/predict/predict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
+        body: JSON.stringify({
+          data: [[windowData]], // Shape: [batch_size, channels, signal_length]
+          model_name: modelToUse,
+          return_probabilities: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get classification results: ${response.status} ${errorText}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result || (!result.predictions && !result.prediction && !result.probabilities)) {
+        setError('Invalid response from API');
+        setClassificationResults(null);
+      } else {
+        setClassificationResults(result);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load classification results');
+      setClassificationResults(null);
+    } finally {
+      setClassificationLoading(false);
+    }
+  };
+
+  const handleDatasetChange = async (dataset: 'PU' | 'CWRU') => {
+    setSelectedDataset(dataset);
+    setClassificationResults(null);
+    setError('');
+    
+    if (signalData.length > 0 && windowSize && typeof windowSize === 'number') {
+      // Load classification results - it will automatically find the right model
+      await loadClassificationResults(signalData);
+    }
   };
 
   const calculateStats = (data: number[]) => {
@@ -489,7 +677,7 @@ function App() {
 
   const computeFFT = async (data: number[]) => {
     try {
-      const fftLength = Math.min(windowSize, data.length);
+      const fftLength = Math.min(windowSize || 512, data.length);
       const signal = data.slice(0, fftLength);
 
       const response = await fetch(`${apiUrl}/processing/fft`, {
@@ -512,6 +700,75 @@ function App() {
       setFftData(result);
     } catch (err: any) {
       setError(translations[language].failedFft + (err.message || ''));
+    } finally {
+      setChartsLoading(false);
+    }
+  };
+
+  const computeSTFT = async (data: number[]) => {
+    try {
+      if (windowSize === '' || !windowSize) {
+        return;
+      }
+
+      const currentWindowSize = typeof windowSize === 'number' ? windowSize : 512;
+      const currentHopLength = (hopLength !== '' && typeof hopLength === 'number') ? hopLength : Math.floor(currentWindowSize / 4);
+      const currentNfft = currentWindowSize;
+
+      // Pad signal if necessary - signal must be at least n_fft length
+      let signal = [...data];
+      if (signal.length < currentNfft) {
+        signal = [...signal, ...Array(currentNfft - signal.length).fill(0)];
+      }
+
+      const response = await fetch(`${apiUrl}/processing/stft`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
+        body: JSON.stringify({
+          signal: signal,
+          n_fft: currentNfft,
+          hop_length: currentHopLength,
+          win_length: currentWindowSize,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to compute STFT: ${errorText}`);
+      }
+
+      // Check content type - API returns image/png directly
+      const contentType = response.headers.get('content-type') || '';
+      
+      if (contentType.includes('application/json')) {
+        // If JSON response (with base64 image)
+        const result = await response.json();
+        setStftData(result);
+      } else {
+        // If response is an image (PNG), convert to base64
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          // Remove data URL prefix if present
+          const base64 = base64String.includes(',') ? base64String.split(',')[1] : base64String;
+          setStftData({
+            file_name: 'stft_spectrogram.png',
+            file_type: blob.type || 'image/png',
+            image_base64: base64,
+          });
+        };
+        reader.onerror = () => {
+          console.error('Error reading STFT image blob');
+        };
+        reader.readAsDataURL(blob);
+      }
+    } catch (err: any) {
+      console.error('STFT error:', err);
+      // Don't set error state for STFT, just log it
     }
   };
 
@@ -564,74 +821,17 @@ function App() {
     ],
   } : null;
 
+
+  // Turn off loading when FFT is ready
   useEffect(() => {
-    if (signalData.length > 0) {
-      const computeHeatMap = async () => {
-        const windowCount = Math.ceil(signalData.length / windowSize);
-        const heatMapResult: number[][] = [];
-
-        for (let i = 0; i < windowCount; i++) {
-          const window = signalData.slice(i * windowSize, (i + 1) * windowSize);
-          let paddedWindow = [...window];
-          if (paddedWindow.length < windowSize) {
-            paddedWindow = [...paddedWindow, ...new Array(windowSize - paddedWindow.length).fill(0)];
-          }
-          
-          try {
-            // Compute FFT for each window using API
-            const response = await fetch(`${apiUrl}/processing/fft`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': apiKey,
-              },
-              body: JSON.stringify({
-                signal: paddedWindow,
-                n: windowSize,
-              }),
-            });
-
-            if (response.ok) {
-              const result = await response.json();
-              // Take first 128 frequency bins for visualization
-              heatMapResult.push(result.magnitudes.slice(0, 128));
-            } else {
-              // Fallback: use simple magnitude calculation
-              const magnitudes = paddedWindow.map(val => Math.abs(val));
-              heatMapResult.push(magnitudes.slice(0, 128));
-            }
-          } catch {
-            // Fallback: use simple magnitude calculation
-            const magnitudes = paddedWindow.map(val => Math.abs(val));
-            heatMapResult.push(magnitudes.slice(0, 128));
-          }
-        }
-
-        setHeatMapData(heatMapResult);
-      };
-
-      computeHeatMap();
-    } else {
-      setHeatMapData(null);
+    if (fftData && chartsLoading) {
+      // Small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        setChartsLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }, [signalData, windowSize, apiUrl, apiKey]);
-
-  const heatMapChartData = heatMapData && heatMapData.length > 0 ? {
-    labels: Array.from({ length: heatMapData[0].length }, (_, i) => i),
-    datasets: heatMapData.map((row, idx) => {
-      const maxValue = Math.max(...heatMapData.flat());
-      return {
-        label: `Window ${idx + 1}`,
-        data: row,
-        backgroundColor: row.map((value) => {
-          const intensity = maxValue > 0 ? value / maxValue : 0;
-          return darkMode 
-            ? `rgba(96, 165, 250, ${Math.max(0.1, intensity)})`
-            : `rgba(56, 95, 140, ${Math.max(0.1, intensity)})`;
-        }),
-      };
-    }),
-  } : null;
+  }, [fftData, chartsLoading]);
 
   const chartOptions = {
     responsive: true,
@@ -664,73 +864,7 @@ function App() {
     },
   };
 
-  // Login/Setup Page
-  if (!isAuthenticated) {
-    return (
-      <div className={`min-h-screen transition-colors duration-300 flex items-center justify-center ${darkMode ? 'dark bg-gray-900' : 'bg-secondary'}`}>
-        <div className={`w-full max-w-md p-8 rounded-xl shadow-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'} transition-colors duration-300`}>
-          <div className="text-center mb-8">
-            <div className="flex flex-col items-center justify-center mb-4">
-              <img 
-                src="/logo.png" 
-                alt="Rotary Insight Logo" 
-                className="h-28 w-28 object-contain mb-4"
-              />
-              <h1 className={`text-5xl font-bold ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
-                Rotary Insight
-              </h1>
-            </div>
-          </div>
-
-          {error && (
-            <div className={`mb-6 p-4 rounded-lg text-center ${darkMode ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-800'}`}>
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-6">
-            <div>
-              <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} font-persian`}>
-                API URL
-              </label>
-              <input
-                type="text"
-                value={tempApiUrl}
-                onChange={(e) => setTempApiUrl(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                className={`w-full px-4 py-3 rounded-lg border text-center ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary transition-all`}
-                placeholder="http://localhost:8000"
-                disabled={validating}
-              />
-            </div>
-
-            <div>
-              <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} font-persian`}>
-                API Key
-              </label>
-              <input
-                type="password"
-                value={tempApiKey}
-                onChange={(e) => setTempApiKey(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                className={`w-full px-4 py-3 rounded-lg border text-center ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary transition-all`}
-                placeholder="Enter API Key"
-                disabled={validating}
-              />
-            </div>
-
-            <button
-              onClick={handleLogin}
-              disabled={validating}
-              className={`w-full px-6 py-3 rounded-lg ${darkMode ? 'bg-primary hover:bg-primary/80' : 'bg-primary hover:bg-primary/90'} text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
-            >
-              {validating ? 'در حال بررسی...' : 'ورود / Login'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Login page removed - auto-authenticated with default credentials
 
   // Results Page
   if (showResults && isCalculated) {
@@ -823,7 +957,7 @@ function App() {
               <div>
                 <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} font-persian`}>{translations[language].windowSize}</p>
                 <p className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} font-persian`}>
-                  {windowSize}
+                  {windowSize || '-'}
                 </p>
               </div>
             </div>
@@ -937,6 +1071,330 @@ function App() {
             </section>
           )}
 
+          {/* Loading Modal */}
+          {chartsLoading && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity duration-300">
+              <div className={`relative p-8 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-2xl transform transition-all duration-300 scale-100`}>
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  {/* Spinner Animation */}
+                  <div className="relative w-16 h-16">
+                    <div className={`absolute inset-0 border-4 ${darkMode ? 'border-gray-700' : 'border-gray-200'} rounded-full`}></div>
+                    <div className={`absolute inset-0 border-4 border-t-transparent ${darkMode ? 'border-primary' : 'border-primary'} rounded-full animate-spin`}></div>
+                  </div>
+                  <p className={`text-lg font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'} font-persian`}>
+                    {translations[language].loadingCharts}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Classification Results Section */}
+          {signalData.length > 0 && (
+            <section className={`mb-8 p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
+                {translations[language].classificationResults}
+              </h2>
+              
+              {/* Dataset Selection Buttons */}
+              <div className="flex justify-center gap-4 mb-6">
+                <button
+                  onClick={() => handleDatasetChange('CWRU')}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                    selectedDataset === 'CWRU'
+                      ? darkMode ? 'bg-primary text-white' : 'bg-primary text-white'
+                      : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  {translations[language].cwruDataset}
+                </button>
+                <button
+                  onClick={() => handleDatasetChange('PU')}
+                  className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                    selectedDataset === 'PU'
+                      ? darkMode ? 'bg-primary text-white' : 'bg-primary text-white'
+                      : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  {translations[language].puDataset}
+                </button>
+              </div>
+
+              {/* Classification Results */}
+              {classificationLoading ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
+                    {translations[language].loadingClassification}
+                  </p>
+                </div>
+              ) : error && error.includes('classification') ? (
+                <div className={`text-center py-8 p-4 rounded-lg ${darkMode ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-800'}`}>
+                  <p>{error}</p>
+                </div>
+              ) : classificationResults ? (
+                <div>
+                  {(() => {
+                    // Check different possible response structures
+                    const predictions = classificationResults.predictions || classificationResults.prediction || classificationResults;
+                    const prediction = Array.isArray(predictions) ? predictions[0] : predictions;
+                    const probabilities = prediction?.probabilities || prediction?.probs || prediction?.prob || [];
+                    
+                    if (!prediction || probabilities.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            No classification data available.
+                          </p>
+                          <p className={`text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Response structure: {JSON.stringify(classificationResults).substring(0, 300)}
+                          </p>
+                        </div>
+                      );
+                    }
+                  
+                  // Get model info from classification result or selected model
+                  let modelInfo = models[selectedModel];
+                  if (!modelInfo && classificationResults.model_name) {
+                    modelInfo = models[classificationResults.model_name];
+                  }
+                  // Also try to find model by dataset
+                  if (!modelInfo && windowSize && typeof windowSize === 'number') {
+                    const matchingModels = Object.keys(models).filter((key) => {
+                      const model = models[key];
+                      return model.window_size === windowSize && 
+                             ((selectedDataset === 'PU' && model.dataset_name === 'PU') ||
+                              (selectedDataset === 'CWRU' && model.dataset_name === 'CWRU'));
+                    });
+                    if (matchingModels.length > 0) {
+                      modelInfo = models[matchingModels[0]];
+                    }
+                  }
+                  const classNames = modelInfo?.class_names || [];
+                  
+                  if (probabilities.length === 0 || classNames.length === 0) {
+                    return (
+                      <div className="text-center py-8">
+                        <p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          No classification data available.
+                        </p>
+                        <p className={`text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Probabilities: {probabilities.length}, ClassNames: {classNames.length}
+                        </p>
+                        <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Model: {selectedModel || 'None'}, Dataset: {selectedDataset}
+                        </p>
+                      </div>
+                    );
+                  }
+                    
+                  const maxProb = Math.max(...probabilities);
+                  const maxIndex = probabilities.indexOf(maxProb);
+                  
+                  // Helper function to format class name for display
+                  const formatClassName = (className: string) => {
+                    // Convert API format to display format
+                    // Examples: "0.007-OuterRace" -> "Outer Ring 0.007"
+                    //           "0.014-Ball" -> "Ball Fault 0.014"
+                    //           "Normal" -> "Normal"
+                    
+                    if (className === 'Normal') {
+                      return 'Normal';
+                    }
+                    
+                    // Match pattern: "0.XXX-Type" or "Type-0.XXX"
+                    const match = className.match(/(\d+\.\d+)-?(\w+)/);
+                    if (match) {
+                      const severity = match[1]; // e.g., "0.007"
+                      const faultType = match[2]; // e.g., "OuterRace", "Ball", "InnerRace"
+                      
+                      let displayType = '';
+                      if (faultType === 'OuterRace') {
+                        displayType = 'Outer Ring';
+                      } else if (faultType === 'InnerRace') {
+                        displayType = 'Inner Ring';
+                      } else if (faultType === 'Ball') {
+                        displayType = 'Ball Fault';
+                      } else {
+                        displayType = faultType;
+                      }
+                      
+                      return `${displayType} ${severity}`;
+                    }
+                    
+                    // If no match, return original
+                    return className;
+                  };
+                  
+                  // Helper function to get color based on class type and index
+                  const getBarColor = (className: string, idx: number, isMax: boolean) => {
+                      if (isMax) return 'bg-green-500';
+                      
+                      // Color coding based on class type and severity
+                      if (className.includes('OuterRace') || className.includes('Outer Ring')) {
+                        // Outer Ring 0.007 (index 7) -> yellow, others -> blue
+                        if (className.includes('0.007')) return 'bg-yellow-500';
+                        return 'bg-blue-500';
+                      }
+                      if (className.includes('InnerRace') || className.includes('Inner Ring')) {
+                        // Inner Ring 0.007 (index 4) -> red, others -> blue
+                        if (className.includes('0.007')) return 'bg-red-500';
+                        return 'bg-blue-500';
+                      }
+                      if (className.includes('Ball') || className.includes('Ball Fault')) {
+                        return 'bg-blue-500';
+                      }
+                      // Normal
+                      return 'bg-blue-500';
+                    };
+                    
+                    // For CWRU Dataset: Split into two panels (10 classes)
+                    if (selectedDataset === 'CWRU' && classNames.length === 10) {
+                      // Part 1: Outer Ring (indices 7, 8, 9) and Inner Ring (indices 4, 5)
+                      // Part 2: Inner Ring (index 6), Ball Fault (indices 1, 2, 3), Normal (index 0)
+                      const part1Indices = [7, 8, 9, 4, 5]; // Outer Ring 0.007, 0.014, 0.021, Inner Ring 0.007, 0.014
+                      const part2Indices = [6, 1, 2, 3, 0]; // Inner Ring 0.021, Ball Fault 0.007, 0.014, 0.021, Normal
+                      
+                      return (
+                        <div>
+                          <h3 className={`text-xl font-semibold mb-4 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
+                            {translations[language].cwruDataset} - Fault Classification
+                          </h3>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            {/* Part 2 */}
+                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                              <h4 className={`text-lg font-semibold mb-3 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                                {translations[language].cwruDataset} - Fault Classification (Part 2)
+                              </h4>
+                              <div className="space-y-3">
+                                {part2Indices.map((idx) => {
+                                  const prob = probabilities[idx];
+                                  const originalClassName = classNames[idx] || `Class ${idx}`;
+                                  const className = formatClassName(originalClassName);
+                                  const isMax = idx === maxIndex;
+                                  
+                                  return (
+                                    <div key={idx} className="flex items-center gap-3" dir="ltr">
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1" dir="ltr">
+                                          <span className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                                            {className}
+                                          </span>
+                                          <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            {prob.toFixed(4)}
+                                          </span>
+                                        </div>
+                                        <div className={`h-5 rounded-full overflow-hidden ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`} dir="ltr">
+                                          <div
+                                            className={`h-full transition-all duration-500 ${getBarColor(originalClassName, idx, isMax)}`}
+                                            style={{ width: `${Math.min(prob * 100, 100)}%` }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            
+                            {/* Part 1 */}
+                            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                              <h4 className={`text-lg font-semibold mb-3 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                                {translations[language].cwruDataset} - Fault Classification (Part 1)
+                              </h4>
+                              <div className="space-y-3">
+                                {part1Indices.map((idx) => {
+                                  const prob = probabilities[idx];
+                                  const originalClassName = classNames[idx] || `Class ${idx}`;
+                                  const className = formatClassName(originalClassName);
+                                  const isMax = idx === maxIndex;
+                                  
+                                  return (
+                                    <div key={idx} className="flex items-center gap-3" dir="ltr">
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1" dir="ltr">
+                                          <span className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                                            {className}
+                                          </span>
+                                          <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            {prob.toFixed(4)}
+                                          </span>
+                                        </div>
+                                        <div className={`h-5 rounded-full overflow-hidden ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`} dir="ltr">
+                                          <div
+                                            className={`h-full transition-all duration-500 ${getBarColor(originalClassName, idx, isMax)}`}
+                                            style={{ width: `${Math.min(prob * 100, 100)}%` }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Predicted Class Summary */}
+                          <div className={`mt-6 p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
+                            <p className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                              {translations[language].predictedClass}: <span className="text-green-500">{formatClassName(classNames[maxIndex] || `Class ${maxIndex}`)}</span> ({translations[language].confidence}: {(maxProb * 100).toFixed(2)}%)
+                            </p>
+                          </div>
+                        </div>
+                      );
+                  }
+                  
+                  // For PU Dataset or other datasets: Single panel
+                  return (
+                      <div>
+                        <h3 className={`text-xl font-semibold mb-4 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
+                          {selectedDataset === 'PU' ? translations[language].puDataset : translations[language].cwruDataset} - Fault Classification
+                        </h3>
+                        
+                        <div className="space-y-4">
+                          {probabilities.map((prob: number, idx: number) => {
+                            const isMax = idx === maxIndex;
+                            const originalClassName = classNames[idx] || `Class ${idx}`;
+                            const className = formatClassName(originalClassName);
+                            
+                            return (
+                              <div key={idx} className="flex items-center gap-4" dir="ltr">
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-center mb-1" dir="ltr">
+                                    <span className={`font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                                      {className}
+                                    </span>
+                                    <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      {prob.toFixed(4)}
+                                    </span>
+                                  </div>
+                                  <div className={`h-6 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`} dir="ltr">
+                                    <div
+                                      className={`h-full transition-all duration-500 ${getBarColor(originalClassName, idx, isMax)}`}
+                                      style={{ width: `${Math.min(prob * 100, 100)}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          
+                          {/* Predicted Class Summary */}
+                          <div className={`mt-6 p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
+                            <p className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                              {translations[language].predictedClass}: <span className="text-green-500">{formatClassName(classNames[maxIndex] || `Class ${maxIndex}`)}</span> ({translations[language].confidence}: {(maxProb * 100).toFixed(2)}%)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : null}
+            </section>
+          )}
+
           {/* Charts Section */}
           {signalData.length > 0 && (
             <section className={`mb-8 p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
@@ -945,7 +1403,7 @@ function App() {
               </h2>
               
               {/* Time Domain Signal */}
-              <div className="mb-8">
+              <div className="mb-16">
                 <h3 className={`text-xl font-semibold mb-2 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} font-persian`}>
                   {translations[language].timeDomain}
                 </h3>
@@ -956,7 +1414,7 @@ function App() {
 
               {/* Frequency Domain (FFT) */}
               {fftChartData && (
-                <div className="mb-8">
+                <div className="mb-16">
                   <h3 className={`text-xl font-semibold mb-2 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} font-persian`}>
                     {translations[language].frequencyDomain}
                   </h3>
@@ -966,94 +1424,58 @@ function App() {
                 </div>
               )}
 
-              {/* Heat Map */}
-              {heatMapData && heatMapData.length > 0 && (
-                <div>
+              {/* Short-Time Fourier Transform (STFT) */}
+              {stftData && stftData.image_base64 && (
+                <div className="mb-16">
                   <h3 className={`text-xl font-semibold mb-2 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} font-persian`}>
-                    {translations[language].heatMap}
+                    {translations[language].stft}
                   </h3>
-                  <div className="overflow-x-auto">
-                    <div className="inline-block min-w-full">
-                      <div className="flex flex-col gap-1 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                        {(() => {
-                          const maxValue = Math.max(...heatMapData.flat());
-                          const minValue = Math.min(...heatMapData.flat());
-                          const range = maxValue - minValue;
-                          
-                          return heatMapData.map((row, rowIdx) => (
-                            <div key={rowIdx} className="flex gap-1" style={{ height: `${Math.max(4, 400 / heatMapData.length)}px` }}>
-                              {row.map((value, colIdx) => {
-                                const normalizedValue = range > 0 ? (value - minValue) / range : 0;
-                                
-                                // Color gradient: blue (low) to red (high)
-                                let r, g, b;
-                                if (darkMode) {
-                                  // Dark mode: darker blue to bright yellow/red
-                                  r = Math.floor(96 + normalizedValue * 159); // 96 to 255
-                                  g = Math.floor(165 - normalizedValue * 100); // 165 to 65
-                                  b = Math.floor(250 - normalizedValue * 190); // 250 to 60
-                                } else {
-                                  // Light mode: light blue to dark red
-                                  r = Math.floor(59 + normalizedValue * 196); // 59 to 255
-                                  g = Math.floor(130 - normalizedValue * 70); // 130 to 60
-                                  b = Math.floor(236 - normalizedValue * 176); // 236 to 60
-                                }
-                                
-                                return (
-                                  <div
-                                    key={colIdx}
-                                    className="flex-1 rounded-sm transition-all hover:opacity-80 cursor-pointer"
-                                    style={{
-                                      backgroundColor: `rgb(${r}, ${g}, ${b})`,
-                                      minWidth: `${Math.max(2, 100 / row.length)}px`,
-                                    }}
-                                    title={`Window ${rowIdx + 1}, Freq ${colIdx}: ${value.toFixed(2)}`}
-                                  />
-                                );
-                              })}
-                            </div>
-                          ));
-                        })()}
+                  <div className="h-64 relative">
+                    <img
+                      src={`data:${stftData.file_type || 'image/png'};base64,${stftData.image_base64}`}
+                      alt="STFT Spectrogram"
+                      className="w-full h-full object-contain"
+                    />
+                    {/* Legend/Info Overlay */}
+                    <div className={`absolute top-2 right-2 ${darkMode ? 'bg-gray-800/90' : 'bg-white/90'} rounded-lg p-3 text-xs shadow-lg border ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                      <div className="space-y-1">
+                        <div className={`font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                          {translations[language].parameters || 'Parameters'}
+                        </div>
+                        {windowSize && typeof windowSize === 'number' && (
+                          <div className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <span className="font-medium">{translations[language].windowSize}:</span> {windowSize}
+                          </div>
+                        )}
+                        {hopLength && typeof hopLength === 'number' && (
+                          <div className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <span className="font-medium">{translations[language].hopLength}:</span> {hopLength}
+                          </div>
+                        )}
+                        {windowSize && typeof windowSize === 'number' && (
+                          <div className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <span className="font-medium">N_FFT:</span> {windowSize}
+                          </div>
+                        )}
                       </div>
+                    </div>
+                    {/* Axis Labels */}
+                    <div className={`absolute bottom-2 left-1/2 transform -translate-x-1/2 ${darkMode ? 'text-gray-300' : 'text-gray-700'} text-xs font-medium`}>
+                      Time →
+                    </div>
+                    <div className={`absolute left-2 top-1/2 transform -translate-y-1/2 -rotate-90 ${darkMode ? 'text-gray-300' : 'text-gray-700'} text-xs font-medium`}>
+                      Frequency →
                     </div>
                   </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <p className={`text-sm text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {translations[language].showing} {heatMapData.length} {translations[language].windows}
+                  {/* Caption */}
+                  <div className={`mt-2 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <p className="italic">
+                      {translations[language].stftDescription || 'Time-Frequency representation showing signal energy distribution'}
                     </p>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {translations[language].low}
-                      </span>
-                      <div className="flex gap-1 w-32 h-4 rounded overflow-hidden">
-                        {Array.from({ length: 20 }, (_, i) => {
-                          const normalizedValue = i / 19;
-                          let r, g, b;
-                          if (darkMode) {
-                            r = Math.floor(96 + normalizedValue * 159);
-                            g = Math.floor(165 - normalizedValue * 100);
-                            b = Math.floor(250 - normalizedValue * 190);
-                          } else {
-                            r = Math.floor(59 + normalizedValue * 196);
-                            g = Math.floor(130 - normalizedValue * 70);
-                            b = Math.floor(236 - normalizedValue * 176);
-                          }
-                          return (
-                            <div
-                              key={i}
-                              className="flex-1"
-                              style={{ backgroundColor: `rgb(${r}, ${g}, ${b})` }}
-                            />
-                          );
-                        })}
-                      </div>
-                      <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {translations[language].high}
-                      </span>
-                    </div>
                   </div>
                 </div>
               )}
+
             </section>
           )}
         </div>
@@ -1094,15 +1516,6 @@ function App() {
                   en
                 </button>
               </div>
-              <button
-                onClick={handleLogout}
-                className={`p-2 rounded-lg ${darkMode ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-red-500 text-white hover:bg-red-600'} transition-colors`}
-                title={translations[language].logout}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
-                </svg>
-              </button>
               <button
                 onClick={() => setDarkMode(!darkMode)}
                 className={`p-2 rounded-lg ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
@@ -1145,7 +1558,48 @@ function App() {
           <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
             {translations[language].configuration}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                {translations[language].windowSize}
+              </label>
+              <select
+                value={windowSize === '' ? '' : windowSize}
+                onChange={(e) => handleWindowSizeChange(e.target.value)}
+                className={`w-full px-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary`}
+              >
+                <option value="">{translations[language].select}</option>
+                <option value="512">512</option>
+                <option value="1024">1024</option>
+                <option value="2048">2048</option>
+              </select>
+            </div>
+            <div>
+              <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                {translations[language].hopLength}
+              </label>
+              <input
+                type="number"
+                value={hopLength === '' ? '' : hopLength}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? '' : parseInt(e.target.value);
+                  if (value === '' || (!isNaN(value as number) && value > 0)) {
+                    setHopLength(value);
+                    setIsCalculated(false);
+                    setShowResults(false);
+                  }
+                }}
+                min="1"
+                disabled={windowSize === '' || !windowSize}
+                className={`w-full px-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed`}
+                placeholder={windowSize && typeof windowSize === 'number' ? Math.floor(windowSize / 4).toString() : ''}
+              />
+              {windowSize && typeof windowSize === 'number' && (
+                <p className={`mt-1 text-xs text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  
+                </p>
+              )}
+            </div>
             <div>
               <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                 {translations[language].selectModel}
@@ -1154,10 +1608,18 @@ function App() {
                 value={selectedModel}
                 onChange={(e) => handleModelSelect(e.target.value)}
                 className={`w-full px-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary`}
-                disabled={Object.keys(models).length === 0}
+                disabled={Object.keys(models).length === 0 || filteredModels.length === 0 || windowSize === ''}
               >
-                <option value="">{Object.keys(models).length === 0 ? translations[language].loadModelsFirst : translations[language].select}</option>
-                {Object.keys(models).map((key) => (
+                <option value="">
+                  {Object.keys(models).length === 0 
+                    ? translations[language].loadModelsFirst 
+                    : windowSize === ''
+                    ? translations[language].selectWindowSizeFirst
+                    : filteredModels.length === 0
+                    ? translations[language].select
+                    : translations[language].select}
+                </option>
+                {filteredModels.map((key) => (
                   <option key={key} value={key}>
                     {key}
                   </option>
@@ -1168,24 +1630,6 @@ function App() {
                   {language === 'fa' ? MODEL_DESCRIPTIONS[selectedModel] || MODEL_DESCRIPTIONS_EN[selectedModel] : MODEL_DESCRIPTIONS_EN[selectedModel] || MODEL_DESCRIPTIONS[selectedModel]}
                 </p>
               )}
-            </div>
-            <div>
-              <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {translations[language].windowSize}
-              </label>
-              <input
-                type="number"
-                value={windowSize}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value);
-                  if (!isNaN(value) && value > 0) {
-                    setWindowSize(value);
-                    setIsCalculated(false);
-                  }
-                }}
-                min="1"
-                className={`w-full px-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} focus:outline-none focus:ring-2 focus:ring-primary`}
-              />
             </div>
           </div>
           {loading && (
