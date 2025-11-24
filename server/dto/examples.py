@@ -20,3 +20,10 @@ class ExamplesListResponse(BaseModel):
     examples: List[ExampleFile] = Field(..., description="List of example CSV files")
     total_count: int = Field(..., description="Total number of example files found")
 
+
+class ExampleSignalResponse(BaseModel):
+    """Response model for example file signal data."""
+
+    filename: str = Field(..., description="Filename of the example CSV file")
+    signal: List[float] = Field(..., description="Signal data extracted from the file")
+
