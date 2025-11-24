@@ -3,7 +3,7 @@ import uvicorn
 
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=".env")
+load_dotenv()
 
 import server.app
 
