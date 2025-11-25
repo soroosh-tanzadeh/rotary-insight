@@ -8,137 +8,107 @@ This project implements various neural network architectures for detecting beari
 
 ## Features
 
-- **Multiple Model Architectures**: Support for Transformer, CNN, MLP, and KAN-based models
-- **MLFlow Integration**: Complete experiment tracking, model management, and artifact storage
+- **Multiple Model Architectures**: Transformer, CNN, MLP, and KAN-based models
+- **MLFlow Integration**: Experiment tracking, model registry, and artifact storage
 - **Multiple Datasets**: Support for CWRU and PU bearing fault datasets
-- **Data Augmentation**: Noise injection for robust model training
-- **Cross-Validation**: K-fold cross-validation support
-- **REST API Server**: FastAPI-based inference server with authentication and auto-documentation
-- **Docker Support**: Easy deployment with Docker and docker-compose
+- **Data Augmentation**: Noise injection for robust training
+- **Cross-Validation**: K‑fold cross‑validation support
+- **REST API Server**: FastAPI inference server with authentication and OpenAPI docs
+- **Docker Support**: Containerised deployment via Docker and docker‑compose
 
 ## Installation
 
 1. Clone the repository:
-
-```bash
-git clone <repository-url>
-cd rotary-insight
-```
-
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Download datasets (CWRU and/or PU) to the `./data/dataset/` directory
+   ```bash
+   git clone https://github.com/your-org/rotary-insight.git
+   cd rotary-insight
+   ```
+2. Create a virtual environment and install Python dependencies:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. Install frontend dependencies (if you plan to run the UI):
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+4. Download the CWRU and/or PU datasets into `./data/dataset/`.
 
 ## Quick Start
 
 ### Training a Model
-
 ```bash
 # Basic training
 python train.py -e my_experiment -m transformer_encoder_classifier --dataset CWRU
 
-# With multiple trials
+# Multiple trials
 python train.py -e my_experiment -m transformer_encoder_classifier --trials 5
 
 # With noise augmentation
 python train.py -e noisy_experiment --train_augmentation --noise_levels 10 20 30
 
-# Cross-validation
+# Cross‑validation
 python train.py -e cv_experiment --scoring_method cross_validation
 ```
 
-### Viewing Experiments in MLFlow UI
-
+### Viewing Experiments in MLflow UI
 ```bash
 mlflow ui
+# Open http://localhost:5000 in your browser
 ```
 
-Then open your browser to http://localhost:5000
-
-### Using the REST API Server
-
-The project includes a production-ready FastAPI server for model inference.
-
-**Quick Start:**
-
+### Running the REST API Server
 ```bash
-# 1. Create .env file with API keys
+# Set up environment variables (API keys, etc.)
 echo "API_KEYS=your-secret-key" > .env
 
-# 2. Copy model configuration
+# Copy example configuration
 cp model_serve_config.example.json model_serve_config.json
 
-# 3. Start MLflow
-./start_mlflow.bash
-
-# 4. Start API server
-./start_server.bash
+# Start services
+./start_mlflow.bash   # launches MLflow tracking server
+./start_server.bash   # launches FastAPI inference server
 ```
-
-**Access the API:**
-
-- Interactive docs: http://localhost:8000/docs
-- API endpoint: http://localhost:8000/predict
-
-**See full documentation:**
-
-- [API Quick Start](API_QUICKSTART.md)
-- [Environment Setup](ENV_SETUP.md)
-- [Server Documentation](server/README.md)
-- [Docker Deployment](DOCKER_DEPLOYMENT.md)
-- [Developer Guide](DEVELOPER_GUIDE.md)
+Access the interactive docs at `http://localhost:8000/docs` and the prediction endpoint at `http://localhost:8000/predict`.
 
 ## Project Structure
-
 ```
 rotary-insight/
-├── train.py              # Main training script
-├── api.py                # Legacy inference utilities
-├── experiment_configs.py # Experiment configuration builder
-├── model_configs.py      # Model architecture configurations
-├── server/               # FastAPI inference server
-│   ├── main.py          # API application
-│   ├── auth.py          # Authentication
-│   ├── models.py        # Pydantic models
-│   ├── inference.py     # Model loading & inference
-│   └── client_example.py # Example Python client
-├── datasets/             # Dataset loaders
+├── train.py                # Main training script
+├── model_serve_config.json # Model serving configuration
+├── model_serve_config.example.json
+├── server/                 # FastAPI inference server
+│   ├── main.py
+│   ├── auth.py
+│   ├── models.py
+│   ├── inference.py
+│   └── client_example.py
+├── datasets/               # Dataset loaders
 │   ├── cwru_dataset.py
 │   └── pu_dataset.py
-├── models/               # Neural network architectures
+├── models/                 # Neural network architectures
 │   ├── transformer.py
 │   ├── embedding.py
 │   └── positional_encoder.py
-├── utils/                # Utility functions
-│   ├── train.py         # Training loop
-│   ├── validate.py      # Validation functions
-│   ├── callbacks.py     # Training callbacks
-│   └── display.py       # Visualization utilities
-├── Dockerfile.api        # Docker image for API
-├── docker-compose.yml    # Docker compose configuration
-└── checkpoints/          # Model checkpoints (local backup)
+├── utils/                  # Utility functions
+│   ├── train.py
+│   ├── validate.py
+│   ├── callbacks.py
+│   └── display.py
+├── Dockerfile.api          # Docker image for API
+├── docker-compose.yml      # Docker compose configuration
+└── checkpoints/            # Model checkpoints (local backup)
 ```
 
-## MLFlow Integration
+## MLflow Integration
+All experiments are automatically logged to MLflow with hyperparameters, metrics, artifacts, and tags (model name, dataset, timestamp). See `MLFLOW_SETUP.md` for detailed configuration.
 
-All experiments are automatically logged to MLFlow with:
-
-- **Hyperparameters**: Model architecture settings
-- **Metrics**: Training/validation accuracy and loss per epoch
-- **Artifacts**: Trained models, confusion matrices, training plots
-- **Tags**: Model name, dataset, timestamp
-
-See [MLFLOW_SETUP.md](MLFLOW_SETUP.md) for detailed MLFlow configuration and usage.
-
-## Command Line Arguments
-
-```
+## Command‑Line Arguments
+```bash
 python train.py [OPTIONS]
-
 Options:
   -e, --experiment TEXT         Experiment name (required)
   -m, --models TEXT [TEXT ...]  List of models to train
@@ -153,32 +123,21 @@ Options:
 
 ## Available Models
 
-- `transformer_encoder_classifier`: Transformer-based encoder
-- `mlp_classifier`: Multi-layer perceptron
-- `kan_classifier`: Kolmogorov-Arnold Network
-- `relu_kan_classifier`: ReLU-based KAN
-- `mlp_conv_classifier`: CNN with MLP
-- `kan_conv_classifier`: CNN with KAN layers
-- And more variants...
+- `transformer_encoder_classifier`
+- `resnet_classifier`
 
 ## Datasets
-
 ### CWRU Dataset
-
 - 10 classes (Normal + 9 fault types)
 - Variable loads and fault sizes
-- Single-channel vibration data
-
+- Single‑channel vibration data
 ### PU Dataset
-
 - 3 classes (Healthy, InnerRace, OuterRace)
 - Multiple operating conditions
-- Single-channel vibration data
+- Single‑channel vibration data
 
 ## Examples
-
-### Example 1: Train with Multiple Noise Levels
-
+### Train with Multiple Noise Levels
 ```bash
 python train.py \
   -e noise_robustness_study \
@@ -188,9 +147,7 @@ python train.py \
   --noise_levels 5 10 15 20 \
   --trials 3
 ```
-
-### Example 2: Cross-Validation
-
+### Cross‑Validation
 ```bash
 python train.py \
   -e cv_baseline \
@@ -198,73 +155,56 @@ python train.py \
   --scoring_method cross_validation \
   --dataset CWRU
 ```
-
-### Example 3: Compare Models
-
+### Compare Models
 ```bash
 python train.py \
   -e model_comparison \
-  -m transformer_encoder_classifier mlp_classifier kan_classifier \
+   -m transformer_encoder_classifier \\
   --trials 5
 ```
-
-### Example 4: Load and Use Best Model
-
+### Load and Use Best Model (Python)
 ```python
 from api import get_best_model, list_runs
-import numpy as np
-
-# List all runs from an experiment
 runs = list_runs("my_experiment", max_results=10)
 print(runs)
-
-# Get the best model
 model = get_best_model("my_experiment", metric="val_acc")
-
-# Perform inference
+import numpy as np
 data = np.random.randn(10, 1, 2048)  # Batch of 10 samples
 predictions = model.predict(data)
 print(f"Predictions: {predictions}")
 ```
 
 ## Model Registry
-
-Register your best models in MLFlow for easy versioning:
-
+Register your best models in MLflow for versioning:
 ```python
 import mlflow
-
-# Register a model
 model_uri = "runs:/abc123.../model"
 mlflow.register_model(model_uri, "BearingFaultDetector")
-
-# Load registered model
 from api import ModelInference
 inference = ModelInference(model_uri="models:/BearingFaultDetector/1")
 ```
 
 ## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. Create a new branch for your feature
-2. Test your changes thoroughly
-3. Update documentation as needed
-4. Submit a pull request
+We welcome contributions! Please follow these steps:
+1. Fork the repository and create a new branch for your feature.
+2. Write tests and ensure existing tests pass.
+3. Update documentation as needed.
+4. Open a pull request.
 
 ## License
-
-See [LICENSE](LICENSE) file for details.
+See the `LICENSE` file for details.
 
 ## Citation
-
-If you use this code in your research, please cite:
-
-```
-[Add citation information here]
+If you use this code in research, please cite:
+```bibtex
+@software{rotary_insight,
+  author = {Your Name and Contributors},
+  title = {Rotary Insight: Bearing Fault Detection Framework},
+  year = {2025},
+  url = {https://github.com/your-org/rotary-insight}
+}
 ```
 
 ## Acknowledgments
-
 - CWRU Bearing Data Center for the bearing fault dataset
 - Paderborn University for the PU bearing dataset

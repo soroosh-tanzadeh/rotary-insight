@@ -1,37 +1,60 @@
 {
     "models": {
+        "efficientnet1d_cwru_1024": {
+            "name": "EfficientNet1D - CWRU",
+            "path": "models:/efficientnet1d_cwru_1024/1",
+            "type": "pytorch",
+            "window_size": 1024,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "dpcnn_cwru_1024": {
+            "name": "DP CNN Model - CWRU",
+            "path": "models:/dpcnn_cwru_1024/1",
+            "type": "pytorch",
+            "window_size": 1024,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "dpcnn_pu_2048": {
+            "name": "DP CNN Model - PU",
+            "path": "models:/dpcnn_pu_2048/1",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
         "transformer_encoder_cwru_2048": {
+            "name": "Transformer Encoder - CWRU",
             "path": "models:/transformer_encoder_cwru_2048/1",
             "type": "pytorch",
-            "stored_in": "mlflow",
             "window_size": 2048,
             "dataset_name": "CWRU",
             "task": "classification"
         },
         "transformer_encoder_cwru_1024": {
+            "name": "Transformer Encoder - CWRU",
             "path": "models:/transformer_encoder_cwru_1024/1",
             "type": "pytorch",
-            "stored_in": "mlflow",
             "window_size": 1024,
             "dataset_name": "CWRU",
             "task": "classification"
         },
         "transformer_encoder_cwru_512": {
+            "name": "Transformer Encoder - CWRU",
             "path": "models:/transformer_encoder_cwru_512/1",
             "type": "pytorch",
-            "stored_in": "mlflow",
             "window_size": 512,
             "dataset_name": "CWRU",
             "task": "classification"
         },
-        "local_model_example": {
-            "path": "/path/to/local/model.pt",
+        "transformer_encoder_pu_2048": {
+            "name": "Transformer Encoder - CWRU",
+            "path": "models:/transformer_encoder_pu_2048/2",
             "type": "pytorch",
-            "stored_in": "file",
-            "window_size": 1024,
-            "dataset_name": "CWRU",
-            "task": "classification",
-            "comment": "Example of loading a model from a local file. Set stored_in to 'file' and path to the .pt file location."
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
         }
     }
 }

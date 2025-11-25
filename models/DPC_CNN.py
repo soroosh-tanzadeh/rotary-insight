@@ -79,7 +79,6 @@ class GAB(nn.Module):
 
 
 class DPCCNN(nn.Module):
-
     def __init__(self, num_classes):
         super(DPCCNN, self).__init__()
        
@@ -101,9 +100,6 @@ class DPCCNN(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
-        
-        x = x.unsqueeze(1)  
-
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
