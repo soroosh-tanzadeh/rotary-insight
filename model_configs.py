@@ -1,5 +1,5 @@
 from torch.optim import Adam
-from models import TransformerEncoderClassifier, ResNetClassfier
+from models import *
 from utils.callbacks import create_expo_lr_cb
 
 
@@ -11,6 +11,7 @@ def get_model_config(num_classes, window_size) -> dict:
         "transformer_encoder_classifier": get_transformer_encoder_classifier_model_config(
             num_classes, window_size
         ),
+        "cnn_bilstm":get_CNN_BiLSTM_classifier_model_config(num_classes, window_size)
     }
 
 
@@ -46,6 +47,31 @@ def get_transformer_encoder_classifier_model_config(num_classes, window_size) ->
             "embedding_dim": 64,
             "feedforward_dim": 32,
             "number_of_channels": 1,
+            "num_classes": num_classes,
+        },
+        "epochs": 32,
+    }
+
+def get_CNN_BiLSTM_classifier_model_config(num_classes, window_size) -> dict:
+    return {
+        "model": CNN_BiLSTM,
+        "optimizer": lambda m: Adam(m.parameters(), lr=1e-3),
+        "callbacks": lambda opt: [
+            create_expo_lr_cb(opt, gamma=0.9),
+        ],
+        "hyperparameters": {
+            "num_classes": num_classes,
+        },
+        "epochs": 32,
+    }
+def get_DenseNet1D_classifier_model_config(num_classes, window_size) -> dict:
+    return {
+        "model": DenseNet1D,
+        "optimizer": lambda m: Adam(m.parameters(), lr=1e-3),
+        "callbacks": lambda opt: [
+            create_expo_lr_cb(opt, gamma=0.9),
+        ],
+        "hyperparameters": {
             "num_classes": num_classes,
         },
         "epochs": 32,
