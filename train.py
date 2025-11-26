@@ -334,7 +334,16 @@ if __name__ == "__main__":
         "-m",
         "--models",
         nargs="+",
-        default=["transformer_encoder_classifier"],
+        default=[
+            "densenet1d",
+            "cnn_bilstm",
+            "cnn_selfattention",
+            "dsicnn",
+            "dpccnn",
+            "efficientnet1d",
+            "resnet1d",
+            "transformer_encoder_classifier",
+        ],
         help="List of models to train",
     )
     parser.add_argument(
