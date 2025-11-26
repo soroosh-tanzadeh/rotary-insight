@@ -7,24 +7,25 @@ A modern, responsive web application for bearing fault diagnosis and signal anal
 ### Core Functionality
 - **Signal Analysis**: Upload CSV files containing signal data for comprehensive analysis
 - **FFT Processing**: Fast Fourier Transform computation for frequency domain analysis
-- **Multiple Model Support**: Load and select from various analysis models
+- **STFT Analysis**: Short-Time Fourier Transform with configurable hop length
+- **Multiple Model Support**: Load and select from various analysis models (CWRU & PU datasets)
 - **Window-based Processing**: Configurable window size for signal segmentation
+- **Classification Results**: Machine learning-based fault classification with confidence scores
 
 ### Visualization
-- **Time Domain Chart**: Visualize raw signal data over time
+- **Time Domain Chart**: Visualize raw signal data over time with expand/zoom modal
 - **Frequency Domain Chart**: Display FFT results showing frequency components
-- **Heat Map**: Interactive heat map visualization of frequency data across multiple windows
-- **Signal Statistics**: Comprehensive statistics including:
-  - Basic statistics (Min, Max, Mean, Median)
-  - Spread statistics (Standard Deviation, Variance, Range, Peak-to-Peak)
-  - Advanced statistics (RMS, Energy, Crest Factor, Zero Crossings)
+- **STFT Spectrogram**: Time-frequency representation with color-coded magnitude
+- **Interactive Modals**: Full-screen chart viewing with detailed axis labels
 
 ### User Experience
 - **Bilingual Support**: Full support for Persian (Farsi) and English languages
 - **RTL Layout**: Right-to-left layout support for Persian language
-- **Dark/Light Mode**: Toggle between dark and light themes
+- **Dark/Light Mode**: Toggle between dark and light themes with smooth transitions
 - **Responsive Design**: Optimized for desktop and mobile devices
 - **Modern UI**: Clean, intuitive interface built with Tailwind CSS
+- **Sample Files**: Pre-loaded sample files for quick testing
+- **Interactive Components**: Accordion-style sample selection, animated buttons
 
 ### Security & Configuration
 - **API Authentication**: Secure API key-based authentication
@@ -43,7 +44,7 @@ Before you begin, ensure you have the following installed:
 1. **Clone the repository** (if not already done):
    ```bash
    git clone <repository-url>
-   cd ROTARY-PROJECT/frontend
+   cd rotary-insight/frontend
    ```
 
 2. **Install dependencies**:
@@ -100,40 +101,35 @@ Before you begin, ensure you have the following installed:
 ### Main Application
 
 1. **Select Model**:
-   - Choose an analysis model from the dropdown (models are automatically loaded after authentication)
-   - Each model has a description showing its purpose
+   - Choose an analysis model from the Configuration section
+   - Filter models by window size
+   - Models are grouped by dataset (CWRU, PU)
 
-2. **Configure Window Size**:
-   - Set the window size for signal segmentation (default: 512)
-   - This determines how the signal is divided into windows for analysis
-
-3. **Upload CSV File**:
+2. **Upload or Select Sample File**:
    - Drag and drop your CSV file into the upload area, or click to browse
-   - The CSV file should contain signal data (numeric values)
+   - Or expand the "Sample Files" accordion to select from pre-loaded examples
+   - Samples are sorted by index for easy navigation
 
-4. **Calculate**:
+3. **Calculate**:
    - Click the "Calculate" button to start the analysis
-   - The application will:
-     - Parse the CSV file
-     - Process the signal using the selected model
-     - Compute FFT for frequency domain analysis
-     - Generate visualizations and statistics
+   - Intelligent validation shows specific error messages if requirements are not met
+   - The application will process the signal and generate visualizations
 
 ### Viewing Results
 
-1. **Signal Information**:
-   - View comprehensive statistics about your signal
-   - Statistics are organized into three categories:
-     - Basic Statistics
-     - Spread Statistics
-     - Advanced Statistics
+1. **File Information Panel**:
+   - View selected file, model, and window size with color-coded status indicators
 
 2. **Charts**:
-   - **Time Domain Signal**: View the raw signal over time
+   - **Time Domain Signal**: View the raw signal with "Expand" button for full-screen modal
    - **Frequency Domain (FFT)**: Analyze frequency components
-   - **Heat Map**: Visualize frequency data across all windows
+   - **STFT Spectrogram**: Time-frequency analysis with adjustable hop length
 
-3. **Navigation**:
+3. **Classification Results**:
+   - View predicted fault class with confidence percentages
+   - Probability distribution across all classes
+
+4. **Navigation**:
    - Use the back arrow button to return to the main page
    - Switch between languages using the language toggle buttons
    - Toggle dark/light mode using the theme button
@@ -148,11 +144,26 @@ frontend/
 │   ├── favicon.png         # Favicon
 │   └── manifest.json       # PWA manifest
 ├── src/
+│   ├── components/         # Reusable UI components
+│   │   ├── index.ts        # Component exports
+│   │   ├── Header.tsx      # App header with theme/language toggles
+│   │   ├── FileUpload.tsx  # CSV file upload with drag & drop
+│   │   ├── ModelSelector.tsx # Model selection with filtering
+│   │   ├── SampleFiles.tsx # Accordion-style sample file selector
+│   │   ├── Charts.tsx      # Signal visualization charts
+│   │   ├── ClassificationResults.tsx # ML classification display
+│   │   ├── FileInfo.tsx    # File/model status display
+│   │   ├── ErrorMessage.tsx # Error message display
+│   │   └── LoadingModal.tsx # Loading spinner overlay
+│   ├── constants/
+│   │   └── translations.ts # i18n translations (FA/EN)
+│   ├── types/
+│   │   └── index.ts        # TypeScript interfaces
 │   ├── App.tsx             # Main application component
 │   ├── App.css             # Application styles
+│   ├── STFTResult.tsx      # STFT visualization component
 │   ├── index.tsx           # Application entry point
-│   ├── index.css           # Global styles and Tailwind imports
-│   └── setupTests.ts       # Test configuration
+│   └── index.css           # Global styles and Tailwind imports
 ├── package.json            # Dependencies and scripts
 ├── tailwind.config.js      # Tailwind CSS configuration
 ├── tsconfig.json           # TypeScript configuration
@@ -216,14 +227,16 @@ The application supports both dark and light themes:
 - **Dark Mode**: Dark background with light text
 - **Light Mode**: Light background with dark text
 
-Theme preference is saved in localStorage and persists across sessions.
+Theme preference is saved in localStorage and persists across sessions. Smooth transitions are applied when switching themes.
 
 ## 🔐 API Integration
 
 The frontend communicates with a backend API for:
 - Model loading (`GET /models/`)
+- Example files (`GET /examples/{model_name}`)
 - FFT computation (`POST /fft/`)
-- Health checks
+- STFT computation (`POST /stft/`)
+- Classification (`POST /classify/`)
 
 All API requests require an `X-API-Key` header for authentication.
 
@@ -276,4 +289,3 @@ When contributing to this project:
 2. Ensure TypeScript types are properly defined
 3. Test your changes thoroughly
 4. Update documentation as needed
-
