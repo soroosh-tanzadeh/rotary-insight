@@ -26,12 +26,7 @@ services:
     volumes:
       - ./mlartifacts:/app/mlartifacts
     command: >
-      mlflow server
-      --host 0.0.0.0
-      --port 5000
-      --backend-store-uri mysql+pymysql://rotaryuser:${MYSQL_PASSWORD}@mysql:3306/rotarydb
-      --serve-artifacts
-      --default-artifact-root ${MLFLOW_DEFAULT_ARTIFACT_ROOT}
+      mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri mysql+pymysql://rotaryuser:${MYSQL_PASSWORD}@mysql:3306/rotarydb --serve-artifacts --default-artifact-root ${MLFLOW_DEFAULT_ARTIFACT_ROOT}
     env_file:
       - .env
     restart: unless-stopped
@@ -74,11 +69,15 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/rotary-insight/rotary-insight-frontend
-    container_name: rotary-frontend
-    restart: unless-stopped
+    image: nginx:1.28-bookworm
+    depends_on:
+      - api
+    volumes:
+      - ./frontend/build:/var/www/rotary-insight/html
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "3000:80"
+    restart: unless-stopped
 
 networks:
   default:
