@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
               alt="Rotary Insight Logo"
               className="h-16 w-16 object-contain"
             />
-            <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
+            <h1 className={`logo-text text-3xl font-bold ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
               {displayTitle}
             </h1>
           </div>

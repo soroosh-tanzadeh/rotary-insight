@@ -13,7 +13,6 @@ import {
 } from 'chart.js';
 import Papa from 'papaparse';
 import './App.css';
-
 // Types
 import { Model, ExampleFile, Language, Dataset, FFTData, STFTData } from './types';
 
@@ -52,8 +51,8 @@ function App() {
   const [language, setLanguage] = useState<Language>('fa');
 
   // API State
-  const [apiUrl, setApiUrl] = useState('https://rotary-insight.ir');
-  const [apiKey, setApiKey] = useState('PzJo3KDcHdpcgLQ88qH6AYPsnNYXE58M');
+  const [apiUrl, setApiUrl] = useState(process.env.REACT_APP_SERVER_URL || '');
+  const [apiKey, setApiKey] = useState(process.env.REACT_APP_API_KEY || '');
   const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   // Models State
@@ -90,8 +89,13 @@ function App() {
 
   // Initialize app
   useEffect(() => {
-    const defaultApiUrl = 'https://rotary-insight.ir';
-    const defaultApiKey = 'PzJo3KDcHdpcgLQ88qH6AYPsnNYXE58M';
+    let defaultApiUrl = process.env.REACT_APP_SERVER_URL;
+    let defaultApiKey = process.env.REACT_APP_API_KEY;
+
+    if (!defaultApiUrl || !defaultApiKey) {
+      defaultApiUrl = 'http://localhost:8000';
+      defaultApiKey = 'test';
+    }
 
     setApiUrl(defaultApiUrl);
     setApiKey(defaultApiKey);
@@ -452,21 +456,34 @@ function App() {
 
     setClassificationLoading(true);
     try {
-      let windowData: number[] = data.length >= currentWindowSize
-        ? data.slice(0, currentWindowSize)
-        : [...data, ...Array(currentWindowSize - data.length).fill(0)];
+      // Calculate number of parts needed
+      const numParts = Math.ceil(data.length / currentWindowSize);
+      const predictions: any[] = [];
 
-      if (windowData.length === 0) {
-        setClassificationLoading(false);
-        setError('No data available for classification');
-        return;
+      // Split signal into parts and get prediction for each
+      let windows: number[][][] = [];
+      for (let i = 0; i < numParts; i++) {
+        const startIdx = i * currentWindowSize;
+        const endIdx = Math.min(startIdx + currentWindowSize, data.length);
+        let windowData = data.slice(startIdx, endIdx);
+
+        // Pad with zeros if the last part is smaller than window size
+        if (windowData.length < currentWindowSize) {
+          windowData = [...windowData, ...Array(currentWindowSize - windowData.length).fill(0)];
+        }
+
+        if (windowData.length === 0) {
+          continue;
+        }
+        windows.push([windowData]);
       }
+
 
       const response = await fetch(`${apiUrl}/predict/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
         body: JSON.stringify({
-          data: [[windowData]],
+          data: windows,
           model_name: modelToUse,
           return_probabilities: true,
         }),
@@ -478,13 +495,58 @@ function App() {
       }
 
       const result = await response.json();
+      predictions.push(result);
 
-      if (!result || (!result.predictions && !result.prediction && !result.probabilities)) {
-        setError('Invalid response from API');
+      if (predictions.length === 0) {
+        setError('No predictions available');
         setClassificationResults(null);
-      } else {
-        setClassificationResults(result);
+        setClassificationLoading(false);
+        return;
       }
+
+      // Extract predicted classes from each part
+      const predictedClasses: number[] = [];
+      predictions.forEach(pred => {
+        const prediction = pred.predictions?.[0] || pred.prediction || pred;
+        const probabilities = prediction?.probabilities || prediction?.probs || prediction?.prob || [];
+        if (probabilities.length > 0) {
+          const maxIndex = probabilities.indexOf(Math.max(...probabilities));
+          predictedClasses.push(maxIndex);
+        }
+      });
+
+      // Find most occurring fault (majority voting)
+      const classCounts: { [key: number]: number } = {};
+      predictedClasses.forEach(cls => {
+        classCounts[cls] = (classCounts[cls] || 0) + 1;
+      });
+
+      let mostCommonClass = predictedClasses[0];
+      let maxCount = 0;
+      Object.entries(classCounts).forEach(([cls, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          mostCommonClass = parseInt(cls);
+        }
+      });
+
+      // Use the prediction from the first occurrence of the most common class
+      const finalPredictionIndex = predictedClasses.indexOf(mostCommonClass);
+      const finalResult = predictions[finalPredictionIndex];
+
+      // Add metadata about multi-part prediction
+      const enrichedResult = {
+        ...finalResult,
+        multiPartPrediction: {
+          numParts,
+          allPredictions: predictions,
+          predictedClasses,
+          finalClass: mostCommonClass,
+          voteCounts: classCounts,
+        }
+      };
+
+      setClassificationResults(enrichedResult);
     } catch (err: any) {
       setError(err.message || 'Failed to load classification results');
       setClassificationResults(null);
@@ -565,7 +627,7 @@ function App() {
         onLanguageChange={setLanguage}
       />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" style={{ maxWidth: '1200px' }}>
         <ErrorMessage darkMode={darkMode} error={error} language={language} />
 
         <ModelSelector

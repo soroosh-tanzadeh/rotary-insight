@@ -10,3 +10,7 @@ model_serve_config.json
 frontend/node_modules
 nginx/htpasswd
 nginx/ssl
+*.env
+frontend/yarn.lock
+frontend/build
+frontend/.env

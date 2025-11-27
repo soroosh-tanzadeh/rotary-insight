@@ -171,98 +171,97 @@ export const ClassificationResults: React.FC<ClassificationResultsProps> = ({
   const maxProb = Math.max(...probabilities);
   const maxIndex = probabilities.indexOf(maxProb);
 
-  // For CWRU Dataset: Split into two panels (10 classes)
+  // For CWRU Dataset: Combined single block (10 classes)
   if (selectedDataset === 'CWRU' && classNames.length === 10) {
-    const part1Indices = [7, 8, 9, 4, 5];
-    const part2Indices = [6, 1, 2, 3, 0];
+    // Combine and order all indices
+    const orderedIndices = [7, 8, 9, 4, 5, 6, 1, 2, 3, 0];
+
+    // Get all predictions if available (for multi-window)
+    const allPredictions = Array.isArray(predictions) ? predictions : [predictions];
 
     return (
-      <section className={`mb-8 p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} transition-colors duration-300`}>
-        <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
+      <section className={`mb-6 p-4 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} transition-colors duration-300`}>
+        <h2 className={`text-xl font-bold mb-3 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
           {t.classificationResults}
         </h2>
         <div>
-          <h3 className={`text-xl font-semibold mb-4 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
+          <h3 className={`text-lg font-semibold mb-3 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
             {t.cwruDataset} - Fault Classification
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Part 2 */}
-            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-              <h4 className={`text-lg font-semibold mb-3 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {t.cwruDataset} - Fault Classification (Part 2)
+          {/* Individual Window Predictions */}
+          {allPredictions.length > 1 && (
+            <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+              <h4 className={`text-sm font-semibold mb-2 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                Predictions for Each Window
               </h4>
-              <div className="space-y-3">
-                {part2Indices.map((idx) => {
-                  const prob = probabilities[idx];
-                  const originalClassName = classNames[idx] || `Class ${idx}`;
-                  const className = formatClassName(originalClassName);
-                  const isMax = idx === maxIndex;
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                {allPredictions.map((pred: any, windowIdx: number) => {
+                  const windowProbs = pred?.probabilities || pred?.probs || pred?.prob || [];
+                  const windowMaxProb = Math.max(...windowProbs);
+                  const windowMaxIndex = windowProbs.indexOf(windowMaxProb);
+                  const windowClassName = formatClassName(classNames[windowMaxIndex] || `Class ${windowMaxIndex}`);
 
                   return (
-                    <div key={idx} className="flex items-center gap-3" dir="ltr">
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center mb-1" dir="ltr">
-                          <span className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                            {className}
-                          </span>
-                          <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {prob.toFixed(4)}
-                          </span>
-                        </div>
-                        <div className={`h-5 rounded-full overflow-hidden ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`} dir="ltr">
-                          <div
-                            className={`h-full transition-all duration-500 ${getBarColor(originalClassName, isMax)}`}
-                            style={{ width: `${Math.min(prob * 100, 100)}%` }}
-                          ></div>
-                        </div>
+                    <div
+                      key={windowIdx}
+                      className={`p-2 rounded text-center ${darkMode ? 'bg-gray-600' : 'bg-white'} border ${darkMode ? 'border-gray-500' : 'border-gray-200'}`}
+                    >
+                      <div className={`text-[10px] font-medium mb-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Win {windowIdx + 1}
+                      </div>
+                      <div className={`text-xs font-semibold truncate ${darkMode ? 'text-white' : 'text-gray-800'}`} title={windowClassName}>
+                        {windowClassName}
+                      </div>
+                      <div className={`text-[10px] ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {(windowMaxProb * 100).toFixed(0)}%
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
+          )}
 
-            {/* Part 1 */}
-            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-              <h4 className={`text-lg font-semibold mb-3 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {t.cwruDataset} - Fault Classification (Part 1)
-              </h4>
-              <div className="space-y-3">
-                {part1Indices.map((idx) => {
-                  const prob = probabilities[idx];
-                  const originalClassName = classNames[idx] || `Class ${idx}`;
-                  const className = formatClassName(originalClassName);
-                  const isMax = idx === maxIndex;
+          {/* Combined Classification Results */}
+          <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+            <h4 className={`text-sm font-semibold mb-2 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+              {allPredictions.length > 1 ? 'Aggregated Results' : 'Classification Results'}
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+              {orderedIndices.map((idx) => {
+                const prob = probabilities[idx];
+                const originalClassName = classNames[idx] || `Class ${idx}`;
+                const className = formatClassName(originalClassName);
+                const isMax = idx === maxIndex;
 
-                  return (
-                    <div key={idx} className="flex items-center gap-3" dir="ltr">
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center mb-1" dir="ltr">
-                          <span className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                            {className}
-                          </span>
-                          <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {prob.toFixed(4)}
-                          </span>
-                        </div>
-                        <div className={`h-5 rounded-full overflow-hidden ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`} dir="ltr">
-                          <div
-                            className={`h-full transition-all duration-500 ${getBarColor(originalClassName, isMax)}`}
-                            style={{ width: `${Math.min(prob * 100, 100)}%` }}
-                          ></div>
-                        </div>
+                return (
+                  <div key={idx} className="flex items-center gap-2" dir="ltr">
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center mb-0.5" dir="ltr">
+                        <span className={`text-xs font-semibold truncate ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                          {className}
+                        </span>
+                        <span className={`text-[10px] ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {prob.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className={`h-3 rounded-full overflow-hidden ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`} dir="ltr">
+                        <div
+                          className={`h-full transition-all duration-500 ${getBarColor(originalClassName, isMax)}`}
+                          style={{ width: `${Math.min(prob * 100, 100)}%` }}
+                        ></div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Predicted Class Summary */}
-          <div className={`mt-6 p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-            <p className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+          <div className={`mt-4 p-2 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
+            <p className={`text-base font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
               {t.predictedClass}: <span className="text-green-500">{formatClassName(classNames[maxIndex] || `Class ${maxIndex}`)}</span> ({t.confidence}: {(maxProb * 100).toFixed(2)}%)
             </p>
           </div>
@@ -272,34 +271,71 @@ export const ClassificationResults: React.FC<ClassificationResultsProps> = ({
   }
 
   // For PU Dataset or other datasets: Single panel
+  // Get all predictions if available (for multi-window)
+  const allPredictions = Array.isArray(predictions) ? predictions : [predictions];
+
   return (
-    <section className={`mb-8 p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} transition-colors duration-300`}>
-      <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
+    <section className={`mb-6 p-4 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} transition-colors duration-300`}>
+      <h2 className={`text-xl font-bold mb-3 text-center ${darkMode ? 'text-white' : 'text-primary'} font-persian`}>
         {t.classificationResults}
       </h2>
       <div>
-        <h3 className={`text-xl font-semibold mb-4 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
+        <h3 className={`text-lg font-semibold mb-3 text-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-persian`}>
           {selectedDataset === 'PU' ? t.puDataset : t.cwruDataset} - Fault Classification
         </h3>
 
-        <div className="space-y-4">
+        {/* Individual Window Predictions */}
+        {allPredictions.length > 1 && (
+          <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+            <h4 className={`text-sm font-semibold mb-2 text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+              Predictions for Each Window
+            </h4>
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              {allPredictions.map((pred: any, windowIdx: number) => {
+                const windowProbs = pred?.probabilities || pred?.probs || pred?.prob || [];
+                const windowMaxProb = Math.max(...windowProbs);
+                const windowMaxIndex = windowProbs.indexOf(windowMaxProb);
+                const windowClassName = formatClassName(classNames[windowMaxIndex] || `Class ${windowMaxIndex}`);
+
+                return (
+                  <div
+                    key={windowIdx}
+                    className={`p-2 rounded text-center ${darkMode ? 'bg-gray-600' : 'bg-white'} border ${darkMode ? 'border-gray-500' : 'border-gray-200'}`}
+                  >
+                    <div className={`text-[10px] font-medium mb-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Win {windowIdx + 1}
+                    </div>
+                    <div className={`text-xs font-semibold truncate ${darkMode ? 'text-white' : 'text-gray-800'}`} title={windowClassName}>
+                      {windowClassName}
+                    </div>
+                    <div className={`text-[10px] ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {(windowMaxProb * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
           {probabilities.map((prob: number, idx: number) => {
             const isMax = idx === maxIndex;
             const originalClassName = classNames[idx] || `Class ${idx}`;
             const className = formatClassName(originalClassName);
 
             return (
-              <div key={idx} className="flex items-center gap-4" dir="ltr">
+              <div key={idx} className="flex items-center gap-2" dir="ltr">
                 <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1" dir="ltr">
-                    <span className={`font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                  <div className="flex justify-between items-center mb-0.5" dir="ltr">
+                    <span className={`text-xs font-semibold truncate ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                       {className}
                     </span>
-                    <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <span className={`text-[10px] ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                       {prob.toFixed(4)}
                     </span>
                   </div>
-                  <div className={`h-6 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`} dir="ltr">
+                  <div className={`h-3 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`} dir="ltr">
                     <div
                       className={`h-full transition-all duration-500 ${getBarColor(originalClassName, isMax)}`}
                       style={{ width: `${Math.min(prob * 100, 100)}%` }}
@@ -311,8 +347,8 @@ export const ClassificationResults: React.FC<ClassificationResultsProps> = ({
           })}
 
           {/* Predicted Class Summary */}
-          <div className={`mt-6 p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
-            <p className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+          <div className={`mt-4 p-2 rounded-lg text-center ${darkMode ? 'bg-gray-700' : 'bg-secondary'}`}>
+            <p className={`text-base font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
               {t.predictedClass}: <span className="text-green-500">{formatClassName(classNames[maxIndex] || `Class ${maxIndex}`)}</span> ({t.confidence}: {(maxProb * 100).toFixed(2)}%)
             </p>
           </div>

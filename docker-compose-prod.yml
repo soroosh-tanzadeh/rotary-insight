@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data/mysql:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -51,7 +51,7 @@ services:
     env_file:
       - .env
     restart: unless-stopped
-  
+
   api:
     image: ghcr.io/rotary-insight/rotary-insight-api
     depends_on:
@@ -66,12 +66,19 @@ services:
     volumes:
       - ./model_serve_config.json:/app/model_serve_config.json:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 60s
     restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/rotary-insight/rotary-insight-frontend
+    container_name: rotary-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
 
 networks:
   default:
