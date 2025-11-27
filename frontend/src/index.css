@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply font-persian antialiased;
+    direction: rtl;
+    @apply bg-secondary text-gray-900;
+    @apply transition-colors duration-300;
+  }
+  
+  html.dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
+  
+  [dir="rtl"] {
+    direction: rtl;
+    font-family: 'Vazir', 'Tahoma', sans-serif;
+  }
+  
+  [dir="ltr"] {
+    direction: ltr;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  /* Improved focus states for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+  }
+  
+  html.dark :focus-visible {
+    @apply ring-offset-gray-900;
+  }
+}
+
+@layer components {
+  /* Custom scrollbar for dark mode */
+  html.dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  html.dark ::-webkit-scrollbar-track {
+    @apply bg-gray-800;
+  }
+  
+  html.dark ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded-full;
+  }
+  
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+  
+  /* Light mode scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+@layer utilities {
+  .font-persian {
+    font-family: 'Vazir', 'Tahoma', sans-serif;
+  }
+  
+  .font-english {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Fade in up animation */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.3s ease-out forwards;
+  }
+
+  /* Subtle pulse animation for selectable cards */
+  @keyframes subtlePulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(56, 95, 140, 0);
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(56, 95, 140, 0.1);
+    }
+  }
+
+  .animate-subtle-pulse {
+    animation: subtlePulse 2s ease-in-out infinite;
+  }
+
+  html.dark .animate-subtle-pulse {
+    animation: subtlePulseDark 2s ease-in-out infinite;
+  }
+
+  @keyframes subtlePulseDark {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(56, 95, 140, 0);
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(56, 95, 140, 0.2);
+    }
+  }
+}
