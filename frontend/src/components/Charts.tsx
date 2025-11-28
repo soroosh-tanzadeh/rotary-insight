@@ -15,6 +15,7 @@ interface ChartsProps {
   hopLength: number | '';
   onHopLengthChange: (value: number | '') => void;
   onRecalculateSTFT: () => void;
+  samplingRate: number;
 }
 
 type ModalType = 'timeDomain' | 'fft' | 'stft' | null;
@@ -30,6 +31,7 @@ export const Charts: React.FC<ChartsProps> = ({
   hopLength,
   onHopLengthChange,
   onRecalculateSTFT,
+  samplingRate,
 }) => {
   const t = translations[language];
   const [modalOpen, setModalOpen] = useState<ModalType>(null);
@@ -64,7 +66,7 @@ export const Charts: React.FC<ChartsProps> = ({
     ],
   } : null;
 
-  const chartOptions = {
+  const chartOptionsFFT = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -82,6 +84,47 @@ export const Charts: React.FC<ChartsProps> = ({
         },
         grid: {
           color: darkMode ? 'rgba(233, 233, 233, 0.1)' : 'rgba(31, 41, 55, 0.1)',
+        },
+        title: {
+          display: true,
+          text: samplingRate ? (language === 'fa' ? 'فرکانس' : 'Frequency') : (language === 'fa' ? 'فرکانس (Hz)' : 'Frequency (Hz)'),
+          color: darkMode ? '#E9E9E9' : '#1F2937',
+        },
+      },
+      y: {
+        ticks: {
+          color: darkMode ? '#E9E9E9' : '#1F2937',
+        },
+        grid: {
+          color: darkMode ? 'rgba(233, 233, 233, 0.1)' : 'rgba(31, 41, 55, 0.1)',
+        },
+      },
+    },
+  };
+
+  const chartOptionsTimeDomain = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        labels: {
+          color: darkMode ? '#E9E9E9' : '#1F2937',
+        },
+      },
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: darkMode ? '#E9E9E9' : '#1F2937',
+        },
+        grid: {
+          color: darkMode ? 'rgba(233, 233, 233, 0.1)' : 'rgba(31, 41, 55, 0.1)',
+        },
+        title: {
+          display: true,
+          text: samplingRate ? (language === 'fa' ? 'زمان (نمونه)' : 'Time (Samples)') : (language === 'fa' ? 'زمان (ثانیه)' : 'Time (Seconds)'),
+          color: darkMode ? '#E9E9E9' : '#1F2937',
         },
       },
       y: {
@@ -113,11 +156,10 @@ export const Charts: React.FC<ChartsProps> = ({
           </h3>
           <button
             onClick={() => setModalOpen('timeDomain')}
-            className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-2 ${
-              darkMode 
-                ? 'border-blue-500/50 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:border-blue-400 hover:scale-105' 
-                : 'border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-400 hover:scale-105'
-            }`}
+            className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-2 ${darkMode
+              ? 'border-blue-500/50 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:border-blue-400 hover:scale-105'
+              : 'border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-400 hover:scale-105'
+              }`}
           >
             <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
@@ -126,7 +168,7 @@ export const Charts: React.FC<ChartsProps> = ({
           </button>
         </div>
         <div className="h-64">
-          <Line data={timeDomainChartData} options={chartOptions} />
+          <Line data={timeDomainChartData} options={chartOptionsTimeDomain} />
         </div>
       </div>
 
@@ -139,11 +181,10 @@ export const Charts: React.FC<ChartsProps> = ({
             </h3>
             <button
               onClick={() => setModalOpen('fft')}
-              className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-2 ${
-                darkMode 
-                  ? 'border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:border-green-400 hover:scale-105' 
-                  : 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100 hover:border-green-400 hover:scale-105'
-              }`}
+              className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-2 ${darkMode
+                ? 'border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:border-green-400 hover:scale-105'
+                : 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100 hover:border-green-400 hover:scale-105'
+                }`}
             >
               <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
@@ -152,7 +193,7 @@ export const Charts: React.FC<ChartsProps> = ({
             </button>
           </div>
           <div className="h-64">
-            <Line data={fftChartData} options={chartOptions} />
+            <Line data={fftChartData} options={chartOptionsFFT} />
           </div>
         </div>
       )}
@@ -166,11 +207,10 @@ export const Charts: React.FC<ChartsProps> = ({
           {stftData && (
             <button
               onClick={() => setModalOpen('stft')}
-              className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-2 ${
-                darkMode 
-                  ? 'border-purple-500/50 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 hover:border-purple-400 hover:scale-105' 
-                  : 'border-purple-300 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-400 hover:scale-105'
-              }`}
+              className={`group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-2 ${darkMode
+                ? 'border-purple-500/50 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 hover:border-purple-400 hover:scale-105'
+                : 'border-purple-300 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-400 hover:scale-105'
+                }`}
             >
               <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
@@ -194,24 +234,22 @@ export const Charts: React.FC<ChartsProps> = ({
 
       {/* Modal for Chart Review */}
       {modalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setModalOpen(null)}
         >
-          <div 
-            className={`relative w-[95vw] h-[95vh] p-8 rounded-2xl shadow-2xl ${
-              darkMode ? 'bg-gray-800' : 'bg-white'
-            }`}
+          <div
+            className={`relative w-[95vw] h-[95vh] p-8 rounded-2xl shadow-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'
+              }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button
               onClick={() => setModalOpen(null)}
-              className={`absolute top-4 left-4 z-10 p-3 rounded-full transition-colors ${
-                darkMode 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-              }`}
+              className={`absolute top-4 left-4 z-10 p-3 rounded-full transition-colors ${darkMode
+                ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                }`}
             >
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -228,10 +266,10 @@ export const Charts: React.FC<ChartsProps> = ({
             {/* Modal Content */}
             <div className="h-[calc(95vh-120px)]">
               {modalOpen === 'timeDomain' && (
-                <Line data={timeDomainChartData} options={{...chartOptions, maintainAspectRatio: false}} />
+                <Line data={timeDomainChartData} options={{ ...chartOptionsTimeDomain, maintainAspectRatio: false }} />
               )}
               {modalOpen === 'fft' && fftChartData && (
-                <Line data={fftChartData} options={{...chartOptions, maintainAspectRatio: false}} />
+                <Line data={fftChartData} options={{ ...chartOptionsFFT, maintainAspectRatio: false }} />
               )}
               {modalOpen === 'stft' && stftData && (
                 <div className="h-full flex items-center justify-center">
@@ -239,24 +277,27 @@ export const Charts: React.FC<ChartsProps> = ({
                     {/* Y-Axis Label */}
                     <div className={`flex flex-col items-center justify-center h-full ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                       <div className="transform -rotate-90 whitespace-nowrap font-semibold text-lg">
-                        {language === 'fa' ? 'فرکانس (Hz)' : 'Frequency (Hz)'}
+                        {samplingRate
+                          ? (language === 'fa' ? 'فرکانس (Hz)' : 'Frequency (Hz)')
+                          : (language === 'fa' ? 'فرکانس نرمال شده' : 'Normalized Frequency')
+                        }
                       </div>
                     </div>
-                    
+
                     <div className="flex flex-col items-center">
                       {/* STFT Image */}
-                      <img 
-                        src={`data:image/png;base64,${stftData.image_base64}`} 
-                        alt="STFT" 
+                      <img
+                        src={`data:image/png;base64,${stftData.image_base64}`}
+                        alt="STFT"
                         className="max-h-[calc(95vh-200px)] max-w-[80vw] object-contain rounded-xl shadow-lg"
                       />
-                      
+
                       {/* X-Axis Label */}
                       <div className={`mt-4 font-semibold text-lg ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                         {language === 'fa' ? 'زمان (نمونه)' : 'Time (Samples)'}
                       </div>
                     </div>
-                    
+
                     {/* Color Legend */}
                     <div className={`flex flex-col items-center justify-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                       <span className="text-xs font-semibold">{language === 'fa' ? 'بالا' : 'High'}</span>

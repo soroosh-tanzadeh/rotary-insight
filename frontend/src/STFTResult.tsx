@@ -83,8 +83,8 @@ export const STFTResult: React.FC<STFTResultProps> = ({
                         </div>
                     </div>
                 )}
-                
-                <div className="h-72 p-4">
+
+                <div className="p-4">
                     <img
                         src={`data:${stftData.file_type || 'image/png'};base64,${stftData.image_base64}`}
                         alt="STFT Spectrogram"
@@ -104,14 +104,6 @@ export const STFTResult: React.FC<STFTResultProps> = ({
                             Hop: {hopLength}
                         </span>
                     )}
-                </div>
-
-                {/* Axis Labels */}
-                <div className={`absolute bottom-3 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium ${darkMode ? 'bg-gray-700/80 text-gray-300' : 'bg-gray-100/80 text-gray-600'}`}>
-                    {language === 'fa' ? '← زمان →' : '← Time →'}
-                </div>
-                <div className={`absolute left-3 top-1/2 transform -translate-y-1/2 -rotate-90 px-3 py-1 rounded-full text-xs font-medium ${darkMode ? 'bg-gray-700/80 text-gray-300' : 'bg-gray-100/80 text-gray-600'}`}>
-                    {language === 'fa' ? '← فرکانس →' : '← Freq →'}
                 </div>
             </div>
 

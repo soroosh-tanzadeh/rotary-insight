@@ -270,8 +270,6 @@ export const ClassificationResults: React.FC<ClassificationResultsProps> = ({
     );
   }
 
-  // For PU Dataset or other datasets: Single panel
-  // Get all predictions if available (for multi-window)
   const allPredictions = Array.isArray(predictions) ? predictions : [predictions];
 
   return (

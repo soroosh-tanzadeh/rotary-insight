@@ -188,7 +188,7 @@ class ModelManager:
             return PU_CLASS_NAMES
         else:
             # Default: return generic class names
-            num_classes = config.get("num_classes", 10)
+            num_classes = config.get("num_classes", 3)
             return [f"Class_{i}" for i in range(num_classes)]
 
     def predict(
@@ -255,7 +255,7 @@ class ModelManager:
                 continue
                 
             models_info[name] = {
-                "name": name,
+                "name": config.get("name", name),
                 "type": config.get("type", "unknown"),
                 "window_size": model_window_size,
                 "dataset_name": config.get("dataset_name", "unknown"),
