@@ -11,6 +11,8 @@ interface ModelSelectorProps {
   loading: boolean;
   onModelSelect: (modelName: string) => void;
   onWindowSizeFilterChange: (filter: number | 'all') => void;
+  samplingRate: number;
+  onSamplingRateChange: (rate: number) => void;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
@@ -22,6 +24,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   loading,
   onModelSelect,
   onWindowSizeFilterChange,
+  samplingRate,
+  onSamplingRateChange,
 }) => {
   const t = translations[language];
 
@@ -71,6 +75,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         </div>
       </div>
 
+      {/* Sampling Rate Input */}
+      <div className="mb-6">
+        <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} transition-colors duration-300`}>
+          {language === 'fa' ? 'نرخ نمونه‌برداری (Hz)' : 'Sampling Rate (Hz)'}
+        </label>
+        <div className="flex justify-center">
+          <input
+            type="number"
+            value={samplingRate}
+            onChange={(e) => onSamplingRateChange(parseInt(e.target.value) || 0)}
+            className={`w-full md:w-1/3 px-4 py-2 rounded-lg border transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-primary text-center`}
+          />
+        </div>
+      </div>
+
       {loading ? (
         <div className="text-center mt-4">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
@@ -104,19 +123,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                           relative cursor-pointer rounded-xl border-2 p-4 transition-colors duration-200
                           ${isSelected
                             ? (darkMode ? 'border-primary bg-primary/20' : 'border-primary bg-primary/10')
-                            : (darkMode 
-                                ? 'border-gray-600 bg-gray-800 hover:border-primary/50' 
-                                : 'border-gray-200 bg-white hover:border-primary/50')
+                            : (darkMode
+                              ? 'border-gray-600 bg-gray-800 hover:border-primary/50'
+                              : 'border-gray-200 bg-white hover:border-primary/50')
                           }
                         `}
                       >
                         {/* Radio-style indicator */}
                         <div className="absolute top-3 left-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                            isSelected 
-                              ? 'border-primary bg-primary' 
-                              : (darkMode ? 'border-gray-500 hover:border-primary/50' : 'border-gray-300 hover:border-primary/50')
-                          }`}>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected
+                            ? 'border-primary bg-primary'
+                            : (darkMode ? 'border-gray-500 hover:border-primary/50' : 'border-gray-300 hover:border-primary/50')
+                            }`}>
                             {isSelected && (
                               <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
@@ -136,24 +154,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
                         <div className="flex justify-between items-start mb-2 pr-6">
                           <h4 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {modelKey}
+                            {model.name}
                           </h4>
                         </div>
 
                         <div className="flex items-center gap-2 mb-2">
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            isSelected 
-                              ? (darkMode ? 'bg-primary/30 text-primary' : 'bg-primary/20 text-primary')
-                              : (darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600')
-                          }`}>
+                          <span className={`text-xs px-2 py-1 rounded-full ${isSelected
+                            ? (darkMode ? 'bg-primary/30 text-primary' : 'bg-primary/20 text-primary')
+                            : (darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600')
+                            }`}>
                             {t.windowSize}: {model.window_size}
                           </span>
                         </div>
-
-                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} line-clamp-2`}>
-                          {model.description}
-                        </p>
-
                         {/* Click hint for unselected cards */}
                         {!isSelected && (
                           <div className={`mt-3 pt-2 border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>

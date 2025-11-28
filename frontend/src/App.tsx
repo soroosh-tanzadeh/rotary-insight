@@ -61,6 +61,7 @@ function App() {
   const [windowSize, setWindowSize] = useState<number | ''>('');
   const [windowSizeFilter, setWindowSizeFilter] = useState<number | 'all'>('all');
   const [hopLength, setHopLength] = useState<number | ''>('');
+  const [samplingRate, setSamplingRate] = useState<number>(12000);
 
   // File State
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -72,7 +73,7 @@ function App() {
   const [stftData, setStftData] = useState<STFTData | null>(null);
 
   // Classification State
-  const [selectedDataset] = useState<Dataset>('CWRU');
+  const [selectedDataset, setSelectedDataset] = useState<Dataset>('CWRU');
   const [classificationResults, setClassificationResults] = useState<any>(null);
 
   // Loading States
@@ -336,7 +337,7 @@ function App() {
       const response = await fetch(`${apiUrl}/processing/fft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
-        body: JSON.stringify({ signal, n: fftLength }),
+        body: JSON.stringify({ signal, n: fftLength, sampling_rate: samplingRate }),
       });
 
       if (!response.ok) {
@@ -373,6 +374,7 @@ function App() {
           n_fft: currentWindowSize,
           hop_length: currentHopLength,
           win_length: currentWindowSize,
+          sampling_rate: samplingRate,
         }),
       });
 
@@ -426,6 +428,13 @@ function App() {
 
     const currentWindowSize = typeof windowSize === 'number' ? windowSize : 512;
     let modelToUse = modelName || selectedModel;
+
+
+    if (models[selectedModel].dataset_name === 'PU') {
+      setSelectedDataset("PU")
+    } else {
+      setSelectedDataset("CWRU")
+    }
 
     if (!modelToUse || (selectedDataset === 'PU' && models[modelToUse]?.dataset_name !== 'PU') ||
       (selectedDataset === 'CWRU' && models[modelToUse]?.dataset_name !== 'CWRU')) {
@@ -609,6 +618,7 @@ function App() {
                 hopLength={hopLength}
                 onHopLengthChange={handleHopLengthChange}
                 onRecalculateSTFT={handleRecalculateSTFT}
+                samplingRate={samplingRate}
               />
             </>
           )}
@@ -639,6 +649,8 @@ function App() {
           loading={loading}
           onModelSelect={handleModelSelect}
           onWindowSizeFilterChange={setWindowSizeFilter}
+          samplingRate={samplingRate}
+          onSamplingRateChange={setSamplingRate}
         />
 
         <FileUpload

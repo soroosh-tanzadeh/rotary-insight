@@ -11,6 +11,8 @@ import os
 from server.dto import FFTRequest, FFTResponse, STFTRequest, STFTResponse
 from server.auth import get_auth_handler
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 router = APIRouter(
     prefix="/processing",
@@ -52,8 +54,15 @@ async def perform_fft(request: FFTRequest):
         # Compute magnitude (L2 norm)
         magnitude = np.abs(fft_values)
 
-        # Frequencies (normalized 0 → Nyquist)
-        freq = np.fft.fftfreq(n, d=1.0)
+        # Frequencies
+        if request.sampling_rate:
+            # If sampling_rate is provided, d = 1 / sampling_rate
+            d = 1.0 / request.sampling_rate
+        else:
+            # Normalized frequency (0 to 0.5 cycles/sample)
+            d = 1.0
+
+        freq = np.fft.fftfreq(n, d=d)
 
         # Only keep positive half (for real signals)
         half = n // 2
@@ -79,50 +88,25 @@ async def perform_fft(request: FFTRequest):
     dependencies=[Depends(get_auth_handler().verify_api_key)],
 )
 async def perform_stft(req: STFTRequest, background_tasks: BackgroundTasks):
-    signal = torch.tensor(req.signal, dtype=torch.float32).unsqueeze(0)  # [1, N]
-    n_fft = req.n_fft
+    signal = torch.tensor(req.signal, dtype=torch.float32)
+    n_fft = req.n_fft or 2048
     hop_length = req.hop_length or n_fft // 4
     win_length = req.win_length or n_fft
-    # Check that n_fft does not exceed the signal length
-    if n_fft > signal.shape[1]:
+    fs = req.sampling_rate or 12000
+    signal_duration_sec = signal.shape[0] / fs
+    if n_fft > signal.shape[0]:
         raise HTTPException(
             status_code=400,
             detail=f"n_fft ({n_fft}) must be less than or equal to signal length ({signal.shape[1]})"
         )
-    x = torch.stft(
-        signal,
-        n_fft=n_fft,
-        hop_length=hop_length,
-        win_length=win_length,
-        center=True,
-        return_complex=True,
-    )
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-
-    spectrogram = torch.abs(x).squeeze(0) 
-
-    spectrogram_np = spectrogram.cpu().numpy()
     
-    spectrogram_db = 10 * np.log10(spectrogram_np + 1e-6) # Add small epsilon to avoid log(0)
-    
-    min_val = spectrogram_db.min()
-    max_val = spectrogram_db.max()
-    norm_spectrogram = (spectrogram_db - min_val) / (max_val - min_val) if (max_val - min_val) > 0 else np.zeros_like(spectrogram_db)
-    
-    cmap = cm.get_cmap('viridis')
-    colored_spectrogram_np = (cmap(norm_spectrogram)[:, :, :3] * 255).astype(np.uint8)
-
-    spectrogram_pil = transforms.ToPILImage()(colored_spectrogram_np)
-    
-    spectrogram = transforms.Resize((256, 1024))(spectrogram_pil)
-
     temp_dir = os.path.join(os.path.dirname(__file__), "temp")
     os.makedirs(temp_dir, exist_ok=True)
     file_name = f"spectrogram_{uuid.uuid4().hex}.png"
     file_path = os.path.join(temp_dir, file_name)
+
+    store_stft(signal, n_fft, hop_length, win_length, fs, file_path)
     
-    spectrogram.save(file_path)
     background_tasks.add_task(os.remove, file_path)
     return FileResponse(
         path=file_path,
@@ -130,3 +114,39 @@ async def perform_stft(req: STFTRequest, background_tasks: BackgroundTasks):
         media_type="image/png",
     )
     
+
+def store_stft(signal, n_fft, hop_length, win_length, fs, path):
+    signal_duration_sec = signal.shape[0] / fs
+    x = torch.stft(
+        signal,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        win_length=win_length,
+        window=torch.hann_window(n_fft),
+        center=True,
+        return_complex=True,
+    )
+
+    spectrogram = torch.abs(x)
+
+    spectrogram_np = spectrogram.cpu().numpy()
+    
+    mag_db_np = 10 * np.log10(spectrogram_np + 1e-6)
+    
+    freqs_np = torch.linspace(0, fs/2, steps=mag_db_np.shape[0])
+    times_np = torch.linspace(0, signal_duration_sec, steps=mag_db_np.shape[1])
+
+    figure, axes = plt.subplots()
+    figure.set_size_inches(10, 5)
+    axes.set_ylabel('Frequency [Hz]')
+    axes.set_xlabel('Time [seconds]')
+    axes.pcolormesh(times_np, freqs_np, mag_db_np, shading='gouraud', cmap='magma')
+    figure.colorbar(label='Amplitude [dB]', mappable=axes.pcolormesh(times_np, freqs_np, mag_db_np, shading='gouraud', cmap='magma'))
+    figure.tight_layout()
+    figure.savefig(path)
+
+if __name__ == "__main__":
+    import pandas as pd
+    sample = pd.read_csv("./samples/sample2_0.007-Ball.csv")
+    signal = sample["ch1"].to_numpy()
+    store_stft(torch.from_numpy(signal), 2048, 512, 2048, 12000, "test.png")

@@ -14,6 +14,10 @@ class FFTRequest(BaseModel):
         None,
         description="FFT length (number of points). If not provided, uses len(signal).",
     )
+    sampling_rate: Optional[int] = Field(
+        None,
+        description="Sampling rate in Hz. If provided, frequencies will be in Hz. If not, they will be normalized (0-0.5).",
+    )
 
 
 class FFTResponse(BaseModel):
