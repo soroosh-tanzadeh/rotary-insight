@@ -198,10 +198,10 @@ See the `LICENSE` file for details.
 If you use this code in research, please cite:
 ```bibtex
 @software{rotary_insight,
-  author = {Your Name and Contributors},
+  author = {Mehdi Tanzadeh Mojarad, MohammadHasan Tavakoli, Majid Haidarasl},
   title = {Rotary Insight: Bearing Fault Detection Framework},
   year = {2025},
-  url = {https://github.com/your-org/rotary-insight}
+  url = {https://github.com/soroosh-tanzadeh/rotary-insight}
 }
 ```
 
