@@ -198,7 +198,7 @@
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_20.csv",
+            "filename": "samples/PU/pu_sample_window_20.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         }
