@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, status
 from server.dto import ExamplesListResponse, ExampleFile, ExampleSignalResponse
 import pandas as pd
 
-# Directory containing CSV examples
+# Base directory containing CSV examples
 EXAMPLES_DIR = os.getenv("EXAMPLES_DIR", "samples")
 
 router = APIRouter(
@@ -17,7 +17,6 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-
 @router.get(
     "/",
     response_model=ExamplesListResponse,
@@ -25,9 +24,11 @@ router = APIRouter(
 )
 async def list_example_files():
     """
-    List all available example CSV files for fault detection.
-    The files are expected to follow the naming pattern:
-    `sample{index}_{fault_name}.csv`
+    List all available CSV files from dataset subdirectories (CWRU, PU).
+    Expected filename format:
+        {dataset}_sample_window_{index}.csv
+    Example:
+        CWRU_sample_window_18.csv
     """
     if not os.path.exists(EXAMPLES_DIR):
         raise HTTPException(
@@ -35,23 +36,35 @@ async def list_example_files():
             detail=f"Examples directory not found: {EXAMPLES_DIR}",
         )
 
-    files = [f for f in os.listdir(EXAMPLES_DIR) if f.endswith(".csv")]
     examples = []
 
-    pattern = re.compile(r"sample(\d+)_(.+)\.csv", re.IGNORECASE)
+    # Matches: CWRU_sample_window_18.csv  OR  pu_sample_window_10.csv
+    pattern = re.compile(r"(.*)_sample_window_(\d+)\.csv", re.IGNORECASE)
 
-    for f in files:
-        match = pattern.match(f)
-        if match:
-            index = int(match.group(1))
-            fault_name = match.group(2)
-            examples.append(
-                ExampleFile(
-                    filename=f,
-                    sample_index=index,
-                    fault_name=fault_name,
+    # Walk through all subdirectories inside samples/
+    for root, _, files in os.walk(EXAMPLES_DIR):
+        for f in files:
+            if not f.endswith(".csv"):
+                continue
+
+            match = pattern.match(f)
+            if match:
+                dataset = match.group(1)               # CWRU or PU
+                index = int(match.group(2))           # numeric index
+
+                # full relative path (e.g. "CWRU/CWRU_sample_window_1.csv")
+                relative_path = os.path.relpath(
+                    os.path.join(root, f),
+                    EXAMPLES_DIR
                 )
-            )
+
+                examples.append(
+                    ExampleFile(
+                        filename=relative_path,
+                        sample_index=index,
+                        fault_name=dataset,  # name dataset as fault_name (due to filename structure)
+                    )
+                )
 
     return ExamplesListResponse(examples=examples, total_count=len(examples))
 
