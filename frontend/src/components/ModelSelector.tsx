@@ -56,37 +56,40 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         {t.configuration}
       </h2>
 
-      {/* Window Size Filter */}
-      <div className="mb-6">
-        <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} transition-colors duration-300`}>
-          {t.filterByWindowSize}
-        </label>
-        <div className="flex justify-center">
-          <select
-            value={windowSizeFilter}
-            onChange={(e) => onWindowSizeFilterChange(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-            className={`w-full md:w-1/3 px-4 py-2 rounded-lg border transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-primary`}
-          >
-            <option value="all">{t.allWindowSizes}</option>
-            {availableWindowSizes.map(size => (
-              <option key={size} value={size}>{size}</option>
-            ))}
-          </select>
+      <div className='flex flex-col md:flex-row'>
+        {/* Window Size Filter */}
+        <div className="w-full mb-6">
+          <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} transition-colors duration-300`}>
+            {t.filterByWindowSize}
+          </label>
+          <div className="flex justify-center">
+            <select
+              value={windowSizeFilter}
+              onChange={(e) => onWindowSizeFilterChange(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+              className={`w-full md:w-1/3 px-4 py-2 rounded-lg border transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-primary`}
+            >
+              <option value="all">{t.allWindowSizes}</option>
+              {availableWindowSizes.map(size => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
 
-      {/* Sampling Rate Input */}
-      <div className="mb-6">
-        <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} transition-colors duration-300`}>
-          {language === 'fa' ? 'نرخ نمونه‌برداری (Hz)' : 'Sampling Rate (Hz)'}
-        </label>
-        <div className="flex justify-center">
-          <input
-            type="number"
-            value={samplingRate}
-            onChange={(e) => onSamplingRateChange(parseInt(e.target.value) || 0)}
-            className={`w-full md:w-1/3 px-4 py-2 rounded-lg border transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-primary text-center`}
-          />
+        {/* Sampling Rate Input */}
+        <div className="w-full mb-6">
+          <label className={`block mb-2 font-semibold text-center ${darkMode ? 'text-gray-200' : 'text-gray-700'} transition-colors duration-300`}>
+            {language === 'fa' ? 'نرخ نمونه‌برداری (Hz)' : 'Sampling Rate (Hz)'}
+          </label>
+          <div className="flex justify-center">
+            <input
+              type="number"
+              disabled
+              value={samplingRate}
+              onChange={(e) => onSamplingRateChange(parseInt(e.target.value) || 0)}
+              className={`w-full md:w-1/3 px-4 py-2 rounded-lg border transition-colors duration-300 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-primary text-center`}
+            />
+          </div>
         </div>
       </div>
 

@@ -8,8 +8,12 @@ export interface Model {
 
 export interface ExampleFile {
   filename: string;
-  sample_index: number;
-  fault_name: string;
+  label: string;
+  sampling_rate: number;
+}
+
+export interface ExamplesResponse {
+  [key: string]: ExampleFile[];
 }
 
 export interface SignalStats {

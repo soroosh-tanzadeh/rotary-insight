@@ -27,11 +27,11 @@ const formatClassName = (className: string): string => {
 
     let displayType = '';
     if (faultType === 'OuterRace') {
-      displayType = 'Outer Ring';
+      displayType = 'Outer Race';
     } else if (faultType === 'InnerRace') {
-      displayType = 'Inner Ring';
+      displayType = 'Inner Race';
     } else if (faultType === 'Ball') {
-      displayType = 'Ball Fault';
+      displayType = 'Ball';
     } else {
       displayType = faultType;
     }
