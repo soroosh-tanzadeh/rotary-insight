@@ -8,7 +8,12 @@ from server.dto.health import HealthResponse
 from server.dto.error import ErrorResponse
 from server.dto.fft import FFTRequest, FFTResponse
 from server.dto.stft import STFTRequest, STFTResponse
-from server.dto.examples import ExampleFile, ExamplesListResponse, ExampleSignalResponse
+from server.dto.examples import (
+    ExampleFile,
+    ExamplesListResponse,
+    ExampleSignalResponse,
+    ExampleData,
+)
 
 __all__ = [
     "InferenceRequest",
@@ -25,4 +30,5 @@ __all__ = [
     "ExamplesListResponse",
     "STFTRequest",
     "STFTResponse",
+    "ExampleData",
 ]

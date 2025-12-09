@@ -256,13 +256,6 @@ export const Charts: React.FC<ChartsProps> = ({
               </svg>
             </button>
 
-            {/* Modal Title */}
-            <h2 className={`text-3xl font-bold mb-6 text-center ${darkMode ? 'text-white' : 'text-gray-800'} font-persian`}>
-              {modalOpen === 'timeDomain' && t.timeDomain}
-              {modalOpen === 'fft' && t.frequencyDomain}
-              {modalOpen === 'stft' && t.stft}
-            </h2>
-
             {/* Modal Content */}
             <div className="h-[calc(95vh-120px)]">
               {modalOpen === 'timeDomain' && (
@@ -274,36 +267,14 @@ export const Charts: React.FC<ChartsProps> = ({
               {modalOpen === 'stft' && stftData && (
                 <div className="h-full flex items-center justify-center">
                   <div className="relative flex items-center gap-4">
-                    {/* Y-Axis Label */}
-                    <div className={`flex flex-col items-center justify-center h-full ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      <div className="transform -rotate-90 whitespace-nowrap font-semibold text-lg">
-                        {samplingRate
-                          ? (language === 'fa' ? 'فرکانس (Hz)' : 'Frequency (Hz)')
-                          : (language === 'fa' ? 'فرکانس نرمال شده' : 'Normalized Frequency')
-                        }
-                      </div>
-                    </div>
 
-                    <div className="flex flex-col items-center">
+                    <div className="flex items-center">
                       {/* STFT Image */}
                       <img
                         src={`data:image/png;base64,${stftData.image_base64}`}
                         alt="STFT"
-                        className="max-h-[calc(95vh-200px)] max-w-[80vw] object-contain rounded-xl shadow-lg"
+                        className="max-w-[80vw] object-contain"
                       />
-
-                      {/* X-Axis Label */}
-                      <div className={`mt-4 font-semibold text-lg ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        {language === 'fa' ? 'زمان (نمونه)' : 'Time (Samples)'}
-                      </div>
-                    </div>
-
-                    {/* Color Legend */}
-                    <div className={`flex flex-col items-center justify-center gap-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      <span className="text-xs font-semibold">{language === 'fa' ? 'بالا' : 'High'}</span>
-                      <div className="w-6 h-48 rounded-lg bg-gradient-to-b from-red-500 via-yellow-400 via-green-400 via-cyan-500 to-blue-900 shadow-md"></div>
-                      <span className="text-xs font-semibold">{language === 'fa' ? 'پایین' : 'Low'}</span>
-                      <span className="text-xs mt-2">{language === 'fa' ? 'دامنه' : 'Magnitude'}</span>
                     </div>
                   </div>
                 </div>

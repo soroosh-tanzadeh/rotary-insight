@@ -137,11 +137,11 @@ def store_stft(signal, n_fft, hop_length, win_length, fs, path):
     times_np = torch.linspace(0, signal_duration_sec, steps=mag_db_np.shape[1])
 
     figure, axes = plt.subplots()
-    figure.set_size_inches(10, 5)
+    figure.set_size_inches(20, 10)
     axes.set_ylabel('Frequency [Hz]')
     axes.set_xlabel('Time [seconds]')
-    axes.pcolormesh(times_np, freqs_np, mag_db_np, shading='gouraud', cmap='magma')
-    figure.colorbar(label='Amplitude [dB]', mappable=axes.pcolormesh(times_np, freqs_np, mag_db_np, shading='gouraud', cmap='magma'))
+    axes.pcolormesh(times_np, freqs_np, mag_db_np, shading='gouraud', cmap='viridis')
+    figure.colorbar(label='Amplitude [dB]', mappable=axes.pcolormesh(times_np, freqs_np, mag_db_np, shading='gouraud', cmap='viridis'))
     figure.tight_layout()
     figure.savefig(path)
 

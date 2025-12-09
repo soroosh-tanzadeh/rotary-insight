@@ -3,9 +3,14 @@ Example files endpoints.
 """
 
 import os
-import re
+import json
 from fastapi import APIRouter, HTTPException, status
-from server.dto import ExamplesListResponse, ExampleFile, ExampleSignalResponse
+from server.dto import (
+    ExamplesListResponse,
+    ExampleData,
+    ExampleSignalResponse,
+    ExampleFile,
+)
 import pandas as pd
 
 # Base directory containing CSV examples
@@ -16,6 +21,7 @@ router = APIRouter(
     tags=["Examples"],
     responses={404: {"description": "Not found"}},
 )
+
 
 @router.get(
     "/",
@@ -36,50 +42,42 @@ async def list_example_files():
             detail=f"Examples directory not found: {EXAMPLES_DIR}",
         )
 
-    examples = []
+    jsonFile = open(EXAMPLES_DIR + "/samples.json", "r")
 
-    # Matches: CWRU_sample_window_18.csv  OR  pu_sample_window_10.csv
-    pattern = re.compile(r"(.*)_sample_window_(\d+)\.csv", re.IGNORECASE)
+    data = json.load(jsonFile)
 
-    # Walk through all subdirectories inside samples/
-    for root, _, files in os.walk(EXAMPLES_DIR):
-        for f in files:
-            if not f.endswith(".csv"):
-                continue
+    jsonFile.close()
 
-            match = pattern.match(f)
-            if match:
-                dataset = match.group(1)               # CWRU or PU
-                index = int(match.group(2))           # numeric index
+    respData = ExampleData(CWRU=[], PU=[])
 
-                # full relative path (e.g. "CWRU/CWRU_sample_window_1.csv")
-                relative_path = os.path.relpath(
-                    os.path.join(root, f),
-                    EXAMPLES_DIR
-                )
-
-                examples.append(
-                    ExampleFile(
-                        filename=relative_path,
-                        sample_index=index,
-                        fault_name=dataset,  # name dataset as fault_name (due to filename structure)
-                    )
-                )
-
-    return ExamplesListResponse(examples=examples, total_count=len(examples))
+    for dataset in data:
+        for file_info in data[dataset]:
+            examplefile = ExampleFile(
+                filename=file_info["filename"],
+                sampling_rate=file_info["sampling_rate"],
+                label=file_info["label"],
+            )
+            if dataset == "CWRU":
+                respData.CWRU.append(examplefile)
+            elif dataset == "PU":
+                respData.PU.append(examplefile)
+    return ExamplesListResponse(
+        data=data, total_count=len(data["CWRU"]) + len(data["PU"])
+    )
 
 
 @router.get(
-    "/{filename}",
+    path="/{folder}/{filename}",
     response_model=ExampleSignalResponse,
     summary="Get signal data from a specific example file",
 )
-async def get_example_file(filename: str):
+async def get_example_file(folder: str, filename: str):
     """
     Get the signal data from a specific example CSV file.
     The file must exist in the examples directory.
     """
-    file_path = os.path.join(EXAMPLES_DIR, filename)
+    print(folder, filename)
+    file_path = os.path.join(EXAMPLES_DIR, folder, filename)
 
     if not os.path.exists(file_path):
         raise HTTPException(
@@ -90,13 +88,13 @@ async def get_example_file(filename: str):
     try:
         df = pd.read_csv(file_path)
         if "ch1" not in df.columns:
-             raise HTTPException(
+            raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Column 'ch1' not found in file: {filename}",
             )
-        
+
         signal = df["ch1"].tolist()
-        
+
         return ExampleSignalResponse(
             filename=filename,
             signal=signal,

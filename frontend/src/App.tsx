@@ -14,7 +14,7 @@ import {
 import Papa from 'papaparse';
 import './App.css';
 // Types
-import { Model, ExampleFile, Language, Dataset, FFTData, STFTData } from './types';
+import { Model, ExampleFile, ExamplesResponse, Language, Dataset, FFTData, STFTData } from './types';
 
 // Constants
 import { translations, MODEL_DESCRIPTIONS, MODEL_DESCRIPTIONS_EN } from './constants/translations';
@@ -65,7 +65,7 @@ function App() {
 
   // File State
   const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [exampleFiles, setExampleFiles] = useState<ExampleFile[]>([]);
+  const [exampleFiles, setExampleFiles] = useState<ExamplesResponse>({});
 
   // Signal Data State
   const [signalData, setSignalData] = useState<number[]>([]);
@@ -133,6 +133,7 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, apiUrl, apiKey]);
 
+
   // Turn off loading when FFT is ready
   useEffect(() => {
     if (fftData && chartsLoading) {
@@ -142,6 +143,16 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, [fftData, chartsLoading]);
+
+  // Auto-calculate when both model and file are selected
+  useEffect(() => {
+    if (selectedModel && csvFile && !isCalculated && windowSize) {
+      // Automatically parse and calculate
+      parseCSV(csvFile);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModel, csvFile, windowSize]);
+
 
   // API Functions
   const loadModels = async () => {
@@ -185,15 +196,15 @@ function App() {
 
       if (!response.ok) {
         console.error('Failed to load examples');
-        setExampleFiles([]);
+        setExampleFiles({});
         return;
       }
 
       const data = await response.json();
-      setExampleFiles(data.examples || []);
+      setExampleFiles(data["data"]);
     } catch (err: any) {
       console.error('Error loading examples:', err);
-      setExampleFiles([]);
+      setExampleFiles({});
     } finally {
       setLoadingExamples(false);
     }
@@ -203,6 +214,21 @@ function App() {
     setLoading(true);
     setError('');
     try {
+      // Find the example to get its sampling rate
+      let selectedExample: ExampleFile | undefined;
+
+      Object.values(exampleFiles).forEach((dataset) => {
+        dataset.forEach((example) => {
+          if (example.filename === filename) {
+            selectedExample = example;
+          }
+        });
+      });
+
+      if (selectedExample) {
+        setSamplingRate(selectedExample.sampling_rate);
+      }
+
       const response = await fetch(`${apiUrl}/examples/${filename}`, {
         headers: { 'X-API-Key': apiKey },
       });
@@ -371,9 +397,9 @@ function App() {
         headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
         body: JSON.stringify({
           signal,
-          n_fft: currentWindowSize,
-          hop_length: currentHopLength,
-          win_length: currentWindowSize,
+          n_fft: 64,
+          win_length: 64,
+          hop_length: 32,
           sampling_rate: samplingRate,
         }),
       });
@@ -429,38 +455,10 @@ function App() {
     const currentWindowSize = typeof windowSize === 'number' ? windowSize : 512;
     let modelToUse = modelName || selectedModel;
 
-
-    if (models[selectedModel].dataset_name === 'PU') {
+    if (models[modelToUse].dataset_name === 'PU') {
       setSelectedDataset("PU")
     } else {
       setSelectedDataset("CWRU")
-    }
-
-    if (!modelToUse || (selectedDataset === 'PU' && models[modelToUse]?.dataset_name !== 'PU') ||
-      (selectedDataset === 'CWRU' && models[modelToUse]?.dataset_name !== 'CWRU')) {
-      const matchingModels = Object.keys(models).filter((key) => {
-        const model = models[key];
-        return model.window_size === currentWindowSize &&
-          ((selectedDataset === 'PU' && model.dataset_name === 'PU') ||
-            (selectedDataset === 'CWRU' && model.dataset_name === 'CWRU'));
-      });
-
-      if (matchingModels.length > 0) {
-        modelToUse = matchingModels[0];
-      } else {
-        const fallbackModels = Object.keys(models).filter((key) => models[key].window_size === currentWindowSize);
-        if (fallbackModels.length > 0) {
-          modelToUse = fallbackModels[0];
-        } else {
-          setClassificationLoading(false);
-          return;
-        }
-      }
-    }
-
-    if (!modelToUse) {
-      setClassificationLoading(false);
-      return;
     }
 
     setClassificationLoading(true);
