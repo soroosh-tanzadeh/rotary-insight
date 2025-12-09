@@ -1,87 +1,87 @@
 {
     "CWRU": [
         {
-            "filename": "CWRU_sample_window_1.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_1.csv",
             "label": "0.021-Ball",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_2.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_2.csv",
             "label": "0.007-OuterRace",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_3.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_3.csv",
             "label": "0.021-Ball",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_4.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_4.csv",
             "label": "0.021-OuterRace",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_5.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_5.csv",
             "label": "0.021-Ball",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_6.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_6.csv",
             "label": "Normal",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_7.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_7.csv",
             "label": "Normal",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_8.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_8.csv",
             "label": "0.021-OuterRace",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_9.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_9.csv",
             "label": "0.021-Ball",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_10.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_10.csv",
             "label": "0.021-OuterRace",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_11.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_11.csv",
             "label": "Normal",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_12.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_12.csv",
             "label": "0.014-OuterRace",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_13.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_13.csv",
             "label": "0.021-OuterRace",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_14.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_14.csv",
             "label": "0.021-OuterRace",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_15.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_15.csv",
             "label": "0.007-OuterRace",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_16.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_16.csv",
             "label": "0.021-Ball",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_17.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_17.csv",
             "label": "0.021-Ball",
             "sampling_rate": 12000
         },
@@ -91,109 +91,109 @@
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_19.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_19.csv",
             "label": "Normal",
             "sampling_rate": 12000
         },
         {
-            "filename": "CWRU_sample_window_20.csv",
+            "filename": "samples/CWRU/CWRU_sample_window_20.csv",
             "label": "0.007-OuterRace",
             "sampling_rate": 12000
         }
     ],
     "PU": [
         {
-            "filename": "pu_sample_window_1.csv",
+            "filename": "samples/PU/pu_sample_window_1.csv",
             "label": "OuterRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_2.csv",
+            "filename": "samples/PU/pu_sample_window_2.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_3.csv",
+            "filename": "samples/PU/pu_sample_window_3.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_4.csv",
+            "filename": "samples/PU/pu_sample_window_4.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_5.csv",
+            "filename": "samples/PU/pu_sample_window_5.csv",
             "label": "Healthy",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_6.csv",
+            "filename": "samples/PU/pu_sample_window_6.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_7.csv",
+            "filename": "samples/PU/pu_sample_window_7.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_8.csv",
+            "filename": "samples/PU/pu_sample_window_8.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_9.csv",
+            "filename": "samples/PU/pu_sample_window_9.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_10.csv",
+            "filename": "samples/PU/pu_sample_window_10.csv",
             "label": "Healthy",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_11.csv",
+            "filename": "samples/PU/pu_sample_window_11.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_12.csv",
+            "filename": "samples/PU/pu_sample_window_12.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_13.csv",
+            "filename": "samples/PU/pu_sample_window_13.csv",
             "label": "OuterRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_14.csv",
+            "filename": "samples/PU/pu_sample_window_14.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_15.csv",
+            "filename": "samples/PU/pu_sample_window_15.csv",
             "label": "InnerRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_16.csv",
+            "filename": "samples/PU/pu_sample_window_16.csv",
             "label": "OuterRace",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_17.csv",
+            "filename": "samples/PU/pu_sample_window_17.csv",
             "label": "Healthy",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_18.csv",
+            "filename": "samples/PU/pu_sample_window_18.csv",
             "label": "Healthy",
             "sampling_rate": 64000
         },
         {
-            "filename": "pu_sample_window_19.csv",
+            "filename": "samples/PU/pu_sample_window_19.csv",
             "label": "OuterRace",
             "sampling_rate": 64000
         },
