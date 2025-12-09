@@ -118,6 +118,7 @@ class PUDataset:
         self._process_files()
         self.total_windows = self.data["window_counts"].sum()
         self._load_data()
+        self._shuffle_data()
         self._log(
             f"Dataset processing complete. {self.data.memory_usage().sum() / 1024 / 1024:.2f} MB"
         )
@@ -247,6 +248,14 @@ class PUDataset:
 
         self._presist_data()
 
+    def _shuffle_data(self):
+        """
+        Shuffle data in place.
+        """
+        perm = torch.randperm(self.X.size(0))
+        self.X = self.X[perm]
+        self.y = self.y[perm]
+
     def _apply_max_per_class_on_metadata(self):
         """
         Apply max_per_class limit on the metadata DataFrame before loading files.
@@ -349,7 +358,7 @@ class PUDataset:
             try:
                 with open(files_info_path, "r") as f:
                     self.files_information = json.load(f)
-                print("Loaded existing files information.")
+                self._log("Loaded existing files information.")
             except Exception as e:
                 print(f"Error loading files information: {e}")
                 self._get_files_info()
@@ -451,10 +460,10 @@ class PUDataset:
         # Check if processed file exists and force_reload is False
         if os.path.exists(processed_file_path) and not self.force_reload:
             number_of_windows = np.load(processed_file_path).shape[0]
-            print(f"Using existing processed file: {processed_filename}")
+            self._log(f"Using existing processed file: {processed_filename}")
         else:
             # Load and process the original file
-            print(f"Processing file: {original_file_name}")
+            self._log(f"Processing file: {original_file_name}")
             mat_data = loadmat(file["file"])
             data = mat_data[original_file_name]["Y"][0][0][0][6][2].reshape((-1))
             windowed_data = slicer(data, self.seq_len, self.step_size, return_df=False)
@@ -517,12 +526,12 @@ class PUDataset:
             if not os.path.exists(archive_path):
                 self._log(f"Downloading {name}...")
                 urllib.urlretrieve(url, archive_path)
-                print("Download complete.")
+                self._log("Download complete.")
 
             # Extract archive
-            print(f"Extracting {name}...")
+            self._log(f"Extracting {name}...")
             patoolib.extract_archive(archive_path, outdir=fault_dir)
-            print("Extraction complete.")
+            self._log("Extraction complete.")
 
             # Clean up archive
             os.remove(archive_path)
