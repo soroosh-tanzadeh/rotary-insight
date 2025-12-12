@@ -1,0 +1,164 @@
+{
+    "models": {
+        "cnn_bilstm_cwru_2048": {
+            "name": "Cnn Bilstm",
+            "path": "models:/cnn_bilstm_cwru_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "cnn_bilstm_pu_2048": {
+            "name": "Cnn Bilstm",
+            "path": "models:/cnn_bilstm_pu_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
+        "cnn_selfattention_cwru_2048": {
+            "name": "Cnn Selfattention",
+            "path": "models:/cnn_selfattention_cwru_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "cnn_selfattention_pu_2048": {
+            "name": "Cnn Selfattention",
+            "path": "models:/cnn_selfattention_pu_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
+        "densenet1d_cwru_2048": {
+            "name": "Densenet1D",
+            "path": "models:/densenet1d_cwru_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "densenet1d_pu_2048": {
+            "name": "Densenet1D",
+            "path": "models:/densenet1d_pu_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
+        "dpccnn_pu_2048": {
+            "name": "Dpccnn",
+            "path": "models:/dpccnn_pu_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
+        "dpcnn_cwru_1024": {
+            "name": "Dpcnn",
+            "path": "models:/dpcnn_cwru_1024/latest",
+            "type": "pytorch",
+            "window_size": 1024,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "dpcnn_cwru_2048": {
+            "name": "Dpcnn",
+            "path": "models:/dpcnn_cwru_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "dpcnn_pu_2048": {
+            "name": "Dpcnn",
+            "path": "models:/dpcnn_pu_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
+        "dsicnn_cwru_2048": {
+            "name": "Dsicnn",
+            "path": "models:/dsicnn_cwru_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "dsicnn_pu_2048": {
+            "name": "Dsicnn",
+            "path": "models:/dsicnn_pu_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
+        "efficientnet1d_cwru_1024": {
+            "name": "Efficientnet1D",
+            "path": "models:/efficientnet1d_cwru_1024/latest",
+            "type": "pytorch",
+            "window_size": 1024,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "efficientnet1d_cwru_2048": {
+            "name": "Efficientnet1D",
+            "path": "models:/efficientnet1d_cwru_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "efficientnet1d_pu_2048": {
+            "name": "Efficientnet1D",
+            "path": "models:/efficientnet1d_pu_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
+        "resnet1d_cwru_2048": {
+            "name": "Resnet1D",
+            "path": "models:/resnet1d_cwru_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "resnet1d_pu_2048": {
+            "name": "Resnet1D",
+            "path": "models:/resnet1d_pu_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "PU",
+            "task": "classification"
+        },
+        "transformer_encoder_cwru_1024": {
+            "name": "Transformer Encoder",
+            "path": "models:/transformer_encoder_cwru_1024/latest",
+            "type": "pytorch",
+            "window_size": 1024,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "transformer_encoder_cwru_2048": {
+            "name": "Transformer Encoder",
+            "path": "models:/transformer_encoder_cwru_2048/latest",
+            "type": "pytorch",
+            "window_size": 2048,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        },
+        "transformer_encoder_cwru_512": {
+            "name": "Transformer Encoder",
+            "path": "models:/transformer_encoder_cwru_512/latest",
+            "type": "pytorch",
+            "window_size": 512,
+            "dataset_name": "CWRU",
+            "task": "classification"
+        }
+    }
+}

@@ -4,7 +4,7 @@ Health check endpoints.
 
 from fastapi import APIRouter
 from server.dto import HealthResponse
-from server.inference import model_manager
+from server.inference import get_model_manager
 
 # Configuration from environment (imported in app.py)
 MLFLOW_TRACKING_URI = None  # Will be set by app.py
@@ -26,7 +26,7 @@ async def health_check():
 
     Returns service status and information about loaded models.
     """
-    models_info = model_manager.list_models()
+    models_info = get_model_manager().list_models()
 
     return HealthResponse(
         status="healthy",
