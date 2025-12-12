@@ -40,13 +40,13 @@ graph TB
     Input --> Freq --> Output
     Input --> Trans --> Output
     
-    style Input fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style Output fill:#e8e8e8,stroke:#666,stroke-width:2px
-    style CNN fill:#f0f0f0,stroke:#666
-    style Hybrid fill:#ebebeb,stroke:#666
-    style Advanced fill:#e0e0e0,stroke:#666
-    style Freq fill:#d5d5d5,stroke:#666
-    style Trans fill:#e8e8e8,stroke:#666
+    style Input fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style Output fill:#ffd966,stroke:#cc8800,stroke-width:3px
+    style CNN fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style Hybrid fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style Advanced fill:#f4b6c2,stroke:#c9304f,stroke-width:2px
+    style Freq fill:#a8d8ea,stroke:#2980b9,stroke-width:2px
+    style Trans fill:#d4bfff,stroke:#7b3ff2,stroke-width:2px
 ```
 
 ## Key Building Blocks
@@ -82,11 +82,11 @@ graph LR
         T2[Patch Embed]
     end
     
-    style Conv fill:#f0f0f0,stroke:#666
-    style Conn fill:#ebebeb,stroke:#666
-    style Attn fill:#e0e0e0,stroke:#666
-    style Seq fill:#d5d5d5,stroke:#666
-    style Trans fill:#e8e8e8,stroke:#666
+    style Conv fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style Conn fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style Attn fill:#f4b6c2,stroke:#c9304f,stroke-width:2px
+    style Seq fill:#a8d8ea,stroke:#2980b9,stroke-width:2px
+    style Trans fill:#d4bfff,stroke:#7b3ff2,stroke-width:2px
 ```
 
 ---
@@ -140,8 +140,13 @@ graph LR
     C --> D[DCIM<br/>Dilated Sep Conv]
     D --> E[GAP] --> F[FC]
     F --> G[Output]
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style G fill:#e8e8e8,stroke:#666,stroke-width:2px
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style C fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style D fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style E fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style F fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style G fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -207,8 +212,14 @@ graph LR
     C -.Skip.-> C
     D -.Skip.-> D
     E -.Skip.-> E
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style H fill:#e8e8e8,stroke:#666,stroke-width:2px
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style C fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style D fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style E fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style F fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style G fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style H fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -280,8 +291,16 @@ graph LR
     C -.Concat.-> C
     E -.Concat.-> E
     G -.Concat.-> G
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style J fill:#e8e8e8,stroke:#666,stroke-width:2px
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style C fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style D fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style E fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style F fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style G fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style H fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style I fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style J fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -341,8 +360,14 @@ graph LR
     C --> D[MBConv2<br/>64→128<br/>expand×6]
     D --> E[MBConv3<br/>128→256<br/>expand×6]
     E --> F[GAP] --> G[FC] --> H[Output]
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style H fill:#e8e8e8,stroke:#666,stroke-width:2px
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style C fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style D fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style E fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style F fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style G fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style H fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -406,8 +431,14 @@ graph LR
     C -.Skip.-> C
     D -.Skip.-> D
     E -.Skip.-> E
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style H fill:#e8e8e8,stroke:#666,stroke-width:2px
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style C fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style D fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style E fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style F fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style G fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style H fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -473,10 +504,13 @@ graph LR
     B --> C[Transpose]
     C --> D[BiLSTM<br/>2 Layers<br/>h=128]
     D --> E[Mean Pool] --> F[FC] --> G[Output]
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style G fill:#e8e8e8,stroke:#666,stroke-width:2px
-    style B fill:#f0f0f0,stroke:#666
-    style D fill:#ebebeb,stroke:#666
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style C fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style D fill:#a8d8ea,stroke:#2980b9,stroke-width:2px
+    style E fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style F fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style G fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -540,9 +574,13 @@ graph LR
     C --> D[Self-Attention<br/>Q,K,V]
     D --> E[Flatten] --> F[FC×2] --> G[Output]
     C -.γ·Attn.-> D
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style G fill:#e8e8e8,stroke:#666,stroke-width:2px
-    style D fill:#ebebeb,stroke:#666
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style C fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style D fill:#f4b6c2,stroke:#c9304f,stroke-width:2px
+    style E fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style F fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style G fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -620,10 +658,14 @@ graph LR
     E --> F[GAP] --> G[FC] --> H[Output]
     C -.Residual.-> D
     D -.Residual.-> E
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style H fill:#e8e8e8,stroke:#666,stroke-width:2px
-    style D fill:#e0e0e0,stroke:#666
-    style E fill:#e0e0e0,stroke:#666
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style C fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style D fill:#f4b6c2,stroke:#c9304f,stroke-width:2px
+    style E fill:#f4b6c2,stroke:#c9304f,stroke-width:2px
+    style F fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style G fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style H fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -692,10 +734,15 @@ graph LR
     D --> E[Conv<br/>1→3ch]
     E --> F[ResNet<br/>Bottleneck×4]
     F --> G[GAP] --> H[FC] --> I[Output]
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style I fill:#e8e8e8,stroke:#666,stroke-width:2px
-    style B fill:#d5d5d5,stroke:#666
-    style C fill:#d5d5d5,stroke:#666
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#7fd8d8,stroke:#2d7a7a,stroke-width:2px
+    style C fill:#7fd8d8,stroke:#2d7a7a,stroke-width:2px
+    style D fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style E fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style F fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style G fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style H fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style I fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -790,10 +837,14 @@ graph LR
     D --> E[Transformer<br/>Encoder×12<br/>Multi-Head Attn]
     E --> F[CLS Token<br/>Extract]
     F --> G[MLP] --> H[Output]
-    style A fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style H fill:#e8e8e8,stroke:#666,stroke-width:2px
-    style E fill:#e8e8e8,stroke:#666
-    style B fill:#d5d5d5,stroke:#666
+    style A fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style B fill:#7fd8d8,stroke:#2d7a7a,stroke-width:2px
+    style C fill:#d4bfff,stroke:#7b3ff2,stroke-width:2px
+    style D fill:#d4bfff,stroke:#7b3ff2,stroke-width:2px
+    style E fill:#d4bfff,stroke:#7b3ff2,stroke-width:2px
+    style F fill:#e6ccff,stroke:#8b66cc,stroke-width:2px
+    style G fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style H fill:#ffd966,stroke:#cc8800,stroke-width:3px
 ```
 
 ---
@@ -895,11 +946,11 @@ graph TB
     Medium --> Output
     Heavy --> Output
     
-    style Input fill:#f5f5f5,stroke:#666,stroke-width:2px
-    style Output fill:#e8e8e8,stroke:#666,stroke-width:2px
-    style Lightweight fill:#f0f0f0,stroke:#666
-    style Medium fill:#ebebeb,stroke:#666
-    style Heavy fill:#e0e0e0,stroke:#666
+    style Input fill:#c3e6ff,stroke:#0066cc,stroke-width:3px
+    style Output fill:#ffd966,stroke:#cc8800,stroke-width:3px
+    style Lightweight fill:#b7e1cd,stroke:#2d7a4f,stroke-width:2px
+    style Medium fill:#ffe699,stroke:#d4a500,stroke-width:2px
+    style Heavy fill:#f4b6c2,stroke:#c9304f,stroke-width:2px
 ```
 
 ---

@@ -24,10 +24,14 @@ def get_model_config(num_classes, window_size) -> dict:
         ),
         "cnn_bilstm": get_CNN_BiLSTM_classifier_model_config(num_classes, window_size),
         "densenet1d": get_DenseNet1D_classifier_model_config(num_classes, window_size),
-        "cnn_selfattention": get_CNN_SelfAttention_classifier_model_config(num_classes, window_size),
+        "cnn_selfattention": get_CNN_SelfAttention_classifier_model_config(
+            num_classes, window_size
+        ),
         "dsicnn": get_DSICNN_classifier_model_config(num_classes, window_size),
         "dpccnn": get_DPCCNN_classifier_model_config(num_classes, window_size),
-        "efficientnet1d": get_EfficientNet1D_classifier_model_config(num_classes, window_size),
+        "efficientnet1d": get_EfficientNet1D_classifier_model_config(
+            num_classes, window_size
+        ),
         "resnet1d": get_ResNet1D_classifier_model_config(num_classes, window_size),
         "wrn1d": get_WRN1D_classifier_model_config(num_classes, window_size),
     }
@@ -70,6 +74,7 @@ def get_transformer_encoder_classifier_model_config(num_classes, window_size) ->
         "epochs": 32,
     }
 
+
 def get_CNN_BiLSTM_classifier_model_config(num_classes, window_size) -> dict:
     return {
         "model": CNN_BiLSTM,
@@ -82,6 +87,8 @@ def get_CNN_BiLSTM_classifier_model_config(num_classes, window_size) -> dict:
         },
         "epochs": 32,
     }
+
+
 def get_DenseNet1D_classifier_model_config(num_classes, window_size) -> dict:
     return {
         "model": DenseNet1D,
@@ -161,7 +168,7 @@ def get_ResNet1D_classifier_model_config(num_classes, window_size) -> dict:
             create_expo_lr_cb(opt, gamma=0.9),
         ],
         "hyperparameters": {
-            "block": None, 
+            "block": None,
             "layers": [2, 2, 2],  # Default layer configuration
             "num_classes": num_classes,
             "dropout_rate": 0.3,
