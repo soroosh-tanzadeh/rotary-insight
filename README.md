@@ -123,8 +123,16 @@ Options:
 
 ## Available Models
 
-- `transformer_encoder_classifier`
-- `resnet_classifier`
+- `transformer_encoder_classifier`: Pure Transformer encoder with patch embeddings
+- `resnet_classifier`: 2D ResNet with STFT preprocessing
+- `resnet1d`: 1D ResNet with residual connections
+- `densenet1d`: 1D DenseNet with dense connections
+- `efficientnet1d`: 1D EfficientNet with MBConv blocks
+- `wrn1d`: 1D Wide Residual Network
+- `dsicnn`: Dilated Separable Inverted CNN
+- `dpccnn`: Deep Pyramid CNN with SE and GAB blocks
+- `cnn_bilstm`: Hybrid CNN + Bidirectional LSTM
+- `cnn_selfattention`: Hybrid CNN + Self-Attention mechanism
 
 ## Datasets
 ### CWRU Dataset
@@ -198,7 +206,7 @@ See the `LICENSE` file for details.
 If you use this code in research, please cite:
 ```bibtex
 @software{rotary_insight,
-  author = {Mehdi Tanzadeh Mojarad, MohammadHasan Tavakoli, Majid Haidarasl},
+  author = {Mehdi Tanzadeh Mojarad, MohammadHasan Tavakoli, Majid Haidarasl, Seyede Zohre Mousavi
   title = {Rotary Insight: Bearing Fault Detection Framework},
   year = {2025},
   url = {https://github.com/soroosh-tanzadeh/rotary-insight}
@@ -208,3 +216,8 @@ If you use this code in research, please cite:
 ## Acknowledgments
 - CWRU Bearing Data Center for the bearing fault dataset
 - Paderborn University for the PU bearing dataset
+- A. Vaswani et al., “Attention Is All You Need,” Cornell University, Jun. 12, 2017.  
+- G. Huang, Z. Liu, and Weinberger, Kilian Q, “Densely Connected Convolutional Networks, arXiv.org, 2016. 
+- M. Zhao, S. Zhong, X. Fu, B. Tang, and M. Pecht, "Deep residual shrinkage networks for fault diagnosis," IEEE Trans. Ind. Informatics, vol. 16, no. 7, pp. 4681–4690, 2019.
+- A. Dosovitskiy et al., “An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale,” arXiv:2010.11929 [cs], Oct. 2020.
+- Zhang, J., Zhao, Z., Jiao, Y., Zhao, R., Hu, X., and Che, R., "DPCCNN: A new lightweight fault diagnosis model for small samples and high noise problem," Neurocomputing, vol. 626, p. 129526, 2025, doi: 10.1016/j.neucom.2025.129526.
