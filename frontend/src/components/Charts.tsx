@@ -14,7 +14,9 @@ interface ChartsProps {
   windowSize: number | '';
   hopLength: number | '';
   onHopLengthChange: (value: number | '') => void;
+  onSSFTWindowLengthChange: (value: number | '') => void;
   onRecalculateSTFT: () => void;
+  ssftWindowLength: number | '',
   samplingRate: number;
 }
 
@@ -28,6 +30,8 @@ export const Charts: React.FC<ChartsProps> = ({
   stftData,
   stftLoading,
   windowSize,
+  ssftWindowLength,
+  onSSFTWindowLengthChange,
   hopLength,
   onHopLengthChange,
   onRecalculateSTFT,
@@ -220,6 +224,8 @@ export const Charts: React.FC<ChartsProps> = ({
           )}
         </div>
         <STFTResult
+          onWindowLengthChange={onSSFTWindowLengthChange}
+          windowLength={ssftWindowLength}
           stftData={stftData}
           windowSize={windowSize}
           hopLength={hopLength}

@@ -59,6 +59,7 @@ function App() {
   const [models, setModels] = useState<{ [key: string]: Model }>({});
   const [selectedModel, setSelectedModel] = useState('');
   const [windowSize, setWindowSize] = useState<number | ''>('');
+  const [sfftWindowSize, setsSfftWindowSize] = useState<number | ''>('');
   const [windowSizeFilter, setWindowSizeFilter] = useState<number | 'all'>('all');
   const [hopLength, setHopLength] = useState<number | ''>('');
   const [samplingRate, setSamplingRate] = useState<number>(12000);
@@ -384,8 +385,10 @@ function App() {
       if (windowSize === '' || !windowSize) return;
 
       setStftLoading(true);
-      const currentWindowSize = typeof windowSize === 'number' ? windowSize : 512;
+      const currentWindowSize = typeof sfftWindowSize === 'number' ? sfftWindowSize : 512;
       const currentHopLength = (hopLength !== '' && typeof hopLength === 'number') ? hopLength : Math.floor(currentWindowSize / 4);
+
+      console.log(sfftWindowSize)
 
       let signal = [...data];
       if (signal.length < currentWindowSize) {
@@ -397,9 +400,9 @@ function App() {
         headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
         body: JSON.stringify({
           signal,
-          n_fft: 64,
-          win_length: 64,
-          hop_length: 32,
+          n_fft: currentWindowSize,
+          win_length: currentWindowSize,
+          hop_length: currentHopLength,
           sampling_rate: samplingRate,
         }),
       });
@@ -437,6 +440,10 @@ function App() {
 
   const handleHopLengthChange = (value: number | '') => {
     setHopLength(value);
+  };
+
+  const handleSSFTWindowChangeChange = (value: number | '') => {
+    setsSfftWindowSize(value)
   };
 
   const handleRecalculateSTFT = () => {
@@ -616,6 +623,8 @@ function App() {
                 hopLength={hopLength}
                 onHopLengthChange={handleHopLengthChange}
                 onRecalculateSTFT={handleRecalculateSTFT}
+                onSSFTWindowLengthChange={handleSSFTWindowChangeChange}
+                ssftWindowLength={sfftWindowSize}
                 samplingRate={samplingRate}
               />
             </>
