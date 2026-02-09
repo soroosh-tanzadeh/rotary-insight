@@ -5,10 +5,12 @@ interface STFTResultProps {
     windowSize: number | '';
     hopLength: number | '';
     onHopLengthChange: (value: number | '') => void;
+    onWindowLengthChange: (value: number | '') => void;
     onRecalculate: () => void;
     isLoading: boolean;
     darkMode: boolean;
     translations: any;
+    windowLength: number | '';
     language: 'fa' | 'en';
 }
 
@@ -16,6 +18,8 @@ export const STFTResult: React.FC<STFTResultProps> = ({
     stftData,
     windowSize,
     hopLength,
+    windowLength,
+    onWindowLengthChange,
     onHopLengthChange,
     onRecalculate,
     isLoading,
@@ -40,6 +44,24 @@ export const STFTResult: React.FC<STFTResultProps> = ({
                             const value = e.target.value === '' ? '' : parseInt(e.target.value);
                             if (value === '' || (!isNaN(value as number) && value > 0)) {
                                 onHopLengthChange(value);
+                            }
+                        }}
+                        min="1"
+                        className={`w-24 px-3 py-1.5 rounded-lg border text-center ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200'} focus:outline-none focus:ring-2 focus:ring-primary/50`}
+                        placeholder={windowSize && typeof windowSize === 'number' ? Math.floor(windowSize / 4).toString() : ''}
+                    />
+                </div>
+                <div className={`flex items-center gap-3 px-4 py-2 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+                    <label className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {translations[language].windowLength}
+                    </label>
+                    <input
+                        type="number"
+                        value={windowLength === '' ? '' : windowLength}
+                        onChange={(e) => {
+                            const value = e.target.value === '' ? '' : parseInt(e.target.value);
+                            if (value === '' || (!isNaN(value as number) && value > 0)) {
+                                onWindowLengthChange(value);
                             }
                         }}
                         min="1"
